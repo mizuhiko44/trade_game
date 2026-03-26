@@ -32,12 +32,22 @@ export async function startCpuMatch(botLevel: "EASY" | "NORMAL" | "HARD") {
   return parseJsonOrThrow(res);
 }
 
-export async function sendAction(matchId: string, actionType: "BUY" | "SELL" | "HOLD", amount: number) {
+export async function sendAction(
+  matchId: string,
+  actionType: "BUY" | "SELL" | "HOLD" | "ITEM",
+  amount: number,
+  itemType?: "PRICE_SPIKE" | "SHIELD" | "DOUBLE_FORCE"
+) {
   const res = await fetch(`${API_BASE_URL}/matches/${matchId}/actions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: USER_ID, actionType, amount })
+    body: JSON.stringify({ userId: USER_ID, actionType, amount, itemType })
   });
+  return parseJsonOrThrow(res);
+}
+
+export async function fetchMatch(matchId: string) {
+  const res = await fetch(`${API_BASE_URL}/matches/${matchId}`);
   return parseJsonOrThrow(res);
 }
 

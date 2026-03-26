@@ -78,9 +78,20 @@ export default function BattleScreen() {
       if (data.match.status === "FINISHED") {
         router.push({
           pathname: "/result",
-          params: { winnerSide: data.match.winnerSide, price: data.match.currentPrice }
+          params: { winnerSide: data.match.winnerSide, price: data.match.currentPrice, matchId: data.match.id }
         });
       }
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function useItem(itemType: "PRICE_SPIKE" | "SHIELD" | "DOUBLE_FORCE") {
+    if (!matchId) return;
+    try {
+      setError(null);
+      const data = await sendAction(matchId, "ITEM", 0, itemType);
+      setState(data.match);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -140,6 +151,18 @@ export default function BattleScreen() {
       <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
       <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
       <Button title="Hold" onPress={() => action("HOLD")} />
+      <Button
+        title="Item: Price Spike"
+        onPress={() => useItem("PRICE_SPIKE")}
+      />
+      <Button
+        title="Item: Shield"
+        onPress={() => useItem("SHIELD")}
+      />
+      <Button
+        title="Item: Double Force"
+        onPress={() => useItem("DOUBLE_FORCE")}
+      />
       <Button title="決済" onPress={() => action("SETTLE")} />
     </View>
   );
