@@ -1,0 +1,15 @@
+# Node
+node_modules/
+
+# Expo local state
+.expo/
+apps/mobile/.expo/
+
+# Env
+.env
+*.env.local
+apps/mobile/.env
+apps/server/.env
+
+# Build output
+dist/
