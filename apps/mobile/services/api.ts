@@ -1,8 +1,17 @@
 import { API_BASE_URL, USER_ID } from "../constants/config";
 
+async function parseJsonOrThrow(res: Response) {
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = typeof body?.message === "string" ? body.message : `HTTP_${res.status}`;
+    throw new Error(message);
+  }
+  return body;
+}
+
 export async function fetchHome() {
   const res = await fetch(`${API_BASE_URL}/home?userId=${USER_ID}`);
-  return res.json();
+  return parseJsonOrThrow(res);
 }
 
 export async function claimBonus() {
@@ -11,7 +20,7 @@ export async function claimBonus() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId: USER_ID })
   });
-  return res.json();
+  return parseJsonOrThrow(res);
 }
 
 export async function startCpuMatch(botLevel: "EASY" | "NORMAL" | "HARD") {
@@ -20,7 +29,7 @@ export async function startCpuMatch(botLevel: "EASY" | "NORMAL" | "HARD") {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId: USER_ID, botLevel })
   });
-  return res.json();
+  return parseJsonOrThrow(res);
 }
 
 export async function sendAction(matchId: string, actionType: "BUY" | "SELL" | "HOLD", amount: number) {
@@ -29,10 +38,10 @@ export async function sendAction(matchId: string, actionType: "BUY" | "SELL" | "
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId: USER_ID, actionType, amount })
   });
-  return res.json();
+  return parseJsonOrThrow(res);
 }
 
 export async function fetchDebugMessages() {
   const res = await fetch(`${API_BASE_URL}/debug/messages?limit=20`);
-  return res.json();
+  return parseJsonOrThrow(res);
 }

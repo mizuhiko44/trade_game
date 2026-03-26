@@ -1,5 +1,7 @@
+import { Platform } from "react-native";
+
 function normalizeApiBaseUrl(rawUrl: string | undefined) {
-  const fallback = "http://localhost:4000/api";
+  const fallback = Platform.OS === "android" ? "http://10.0.2.2:4000/api" : "http://localhost:4000/api";
   if (!rawUrl) return fallback;
   const trimmed = rawUrl.trim().replace(/\/+$/, "");
   return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;

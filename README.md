@@ -42,6 +42,7 @@ npm run start
 
 Expo の QR コードから iOS/Android シミュレータまたは実機で起動します。
 実機で Expo Go を使う場合、`apps/mobile/.env` の `EXPO_PUBLIC_API_BASE_URL` は `localhost` ではなくPCのローカルIP（例: `http://192.168.0.12:4000`）を設定してください。
+Android エミュレータ利用時は、未指定の場合 `http://10.0.2.2:4000/api` をデフォルト利用します。
 
 ## MVP でできること
 - ホーム画面でユーザ情報確認
@@ -71,4 +72,9 @@ curl -X POST http://localhost:4000/api/matches/<matchId>/actions \
 curl -X POST http://localhost:4000/api/debug/messages \
   -H 'Content-Type: application/json' \
   -d '{"text":"hello from curl","source":"curl"}'
+```
+
+### 外部デバッグメッセージ確認（API）
+```bash
+curl "http://localhost:4000/api/debug/messages?limit=20"
 ```
