@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button, ScrollView, Text, View } from "react-native";
-import { fetchDebugMessages } from "../services/api";
+import { Button, ScrollView, Text, TextInput, View } from "react-native";
+import { clearDebugMessages, fetchDebugMessages, postDebugMessage } from "../services/api";
 
 type DebugMessage = {
   id: string;
@@ -13,6 +13,7 @@ export default function DebugScreen() {
   const [messages, setMessages] = useState<DebugMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftText, setDraftText] = useState("hello from mobile");
 
   async function load() {
     try {
@@ -38,7 +39,27 @@ export default function DebugScreen() {
       <Text style={{ fontSize: 22, fontWeight: "700" }}>デバッグ受信画面</Text>
       <Text>外部コマンドで送ったメッセージを2秒ごとに再取得します。</Text>
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
+      <TextInput
+        value={draftText}
+        onChangeText={setDraftText}
+        placeholder="送信テキスト"
+        style={{ borderWidth: 1, borderRadius: 8, padding: 10 }}
+      />
+      <Button
+        title="この画面から送信"
+        onPress={async () => {
+          await postDebugMessage(draftText || "empty");
+          await load();
+        }}
+      />
       <Button title={loading ? "更新中..." : "手動更新"} onPress={load} />
+      <Button
+        title="メッセージを全削除"
+        onPress={async () => {
+          await clearDebugMessages();
+          await load();
+        }}
+      />
       <ScrollView style={{ marginTop: 8 }}>
         {messages.length === 0 ? (
           <Text>まだメッセージがありません。</Text>

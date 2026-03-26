@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { claimLoginBonus, getMatch, getUserHome, resolveTurn, startCpuMatch } from "../services/gameService";
-import { addDebugMessage, listDebugMessages } from "../services/debugService";
+import { addDebugMessage, clearDebugMessages, listDebugMessages } from "../services/debugService";
 
 const startMatchSchema = z.object({
   userId: z.string(),
@@ -77,9 +77,18 @@ export async function postDebugMessage(req: Request, res: Response) {
 
 export async function getDebugMessages(req: Request, res: Response) {
   try {
-    const limit = Number(req.query.limit ?? 20);
+    const limit = z.coerce.number().int().min(1).max(100).parse(req.query.limit ?? 20);
     const messages = listDebugMessages(limit);
     res.json({ messages });
+  } catch (e) {
+    res.status(400).json({ message: (e as Error).message });
+  }
+}
+
+export async function deleteDebugMessages(_req: Request, res: Response) {
+  try {
+    const result = clearDebugMessages();
+    res.json(result);
   } catch (e) {
     res.status(400).json({ message: (e as Error).message });
   }

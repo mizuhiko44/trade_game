@@ -45,3 +45,19 @@ export async function fetchDebugMessages() {
   const res = await fetch(`${API_BASE_URL}/debug/messages?limit=20`);
   return parseJsonOrThrow(res);
 }
+
+export async function postDebugMessage(text: string, source = "mobile") {
+  const res = await fetch(`${API_BASE_URL}/debug/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, source })
+  });
+  return parseJsonOrThrow(res);
+}
+
+export async function clearDebugMessages() {
+  const res = await fetch(`${API_BASE_URL}/debug/messages`, {
+    method: "DELETE"
+  });
+  return parseJsonOrThrow(res);
+}

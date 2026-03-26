@@ -78,3 +78,8 @@ curl -X POST http://localhost:4000/api/debug/messages \
 ```bash
 curl "http://localhost:4000/api/debug/messages?limit=20"
 ```
+
+### 外部デバッグメッセージ全削除（API）
+```bash
+curl -X DELETE "http://localhost:4000/api/debug/messages"
+```

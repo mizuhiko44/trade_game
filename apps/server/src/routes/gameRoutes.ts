@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   action,
+  deleteDebugMessages,
   getDebugMessages,
   home,
   loginBonus,
@@ -18,5 +19,6 @@ router.get("/matches/:matchId", matchDetail);
 router.post("/matches/:matchId/actions", action);
 router.get("/debug/messages", getDebugMessages);
 router.post("/debug/messages", postDebugMessage);
+router.delete("/debug/messages", deleteDebugMessages);
 
 export default router;

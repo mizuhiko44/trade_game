@@ -22,3 +22,8 @@ export function addDebugMessage(text: string, source = "external") {
 export function listDebugMessages(limit = 20) {
   return messages.slice(0, limit);
 }
+
+export function clearDebugMessages() {
+  messages.length = 0;
+  return { cleared: true };
+}
