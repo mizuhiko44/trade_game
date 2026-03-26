@@ -8,6 +8,7 @@ import {
   Side
 } from "@prisma/client";
 import { GAME_CONFIG, REWARDS } from "../config/gameConfig";
+import { auditLog } from "./auditLogService";
 import { ResolveTurnInput, StartCpuMatchInput } from "../types/game";
 
 const prisma = new PrismaClient();
@@ -31,16 +32,19 @@ export async function claimLoginBonus(userId: string) {
     user.lastLoginBonusAt && user.lastLoginBonusAt.toDateString() === now.toDateString();
 
   if (alreadyClaimedToday) {
+    auditLog("LOGIN_BONUS_SKIPPED", { userId, reason: "already_claimed_today" });
     return user;
   }
 
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: userId },
     data: {
       lifePoints: { increment: GAME_CONFIG.loginBonusLifePoints },
       lastLoginBonusAt: now
     }
   });
+  auditLog("LOGIN_BONUS_CLAIMED", { userId, lifePoints: updated.lifePoints });
+  return updated;
 }
 
 export async function startCpuMatch(input: StartCpuMatchInput) {
@@ -64,7 +68,7 @@ export async function startCpuMatch(input: StartCpuMatchInput) {
     data: { lifePoints: { decrement: GAME_CONFIG.matchCostLifePoints } }
   });
 
-  return prisma.match.create({
+  const match = await prisma.match.create({
     data: {
       type: MatchType.CPU,
       botLevel: input.botLevel,
@@ -83,6 +87,8 @@ export async function startCpuMatch(input: StartCpuMatchInput) {
     },
     include: { players: true }
   });
+  auditLog("MATCH_CREATED_CPU", { matchId: match.id, userId: user.id, botLevel: input.botLevel });
+  return match;
 }
 
 function cpuDecision(botLevel: BotLevel, turn: number) {
@@ -187,7 +193,22 @@ export async function resolveTurn(input: ResolveTurnInput) {
       where: { id: player.userId },
       data: { coins: { increment: isWin ? REWARDS.winCoins : REWARDS.loseCoins } }
     });
+    auditLog("MATCH_FINISHED", {
+      matchId: match.id,
+      winnerSide,
+      playerUserId: player.userId,
+      result: isWin ? "WIN" : "LOSE"
+    });
   }
+
+  auditLog("TURN_RESOLVED", {
+    matchId: match.id,
+    turnNumber: match.turnNumber,
+    actionType: input.action.actionType,
+    buyTotal,
+    sellTotal,
+    close
+  });
 
   return { match: updated, turn };
 }
