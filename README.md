@@ -73,6 +73,7 @@ curl -X POST http://localhost:4000/api/debug/messages \
   -H 'Content-Type: application/json' \
   -d '{"text":"hello from curl","source":"curl"}'
 ```
+※ Debug系APIは `NODE_ENV=production` では無効です。
 
 ### 外部デバッグメッセージ確認（API）
 ```bash

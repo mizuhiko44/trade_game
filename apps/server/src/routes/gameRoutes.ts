@@ -9,6 +9,7 @@ import {
   postDebugMessage,
   startCpu
 } from "../controllers/gameController";
+import { requireDebugEnabled } from "../middlewares/requireDebugEnabled";
 
 const router = Router();
 
@@ -17,8 +18,8 @@ router.post("/login-bonus", loginBonus);
 router.post("/matches/cpu", startCpu);
 router.get("/matches/:matchId", matchDetail);
 router.post("/matches/:matchId/actions", action);
-router.get("/debug/messages", getDebugMessages);
-router.post("/debug/messages", postDebugMessage);
-router.delete("/debug/messages", deleteDebugMessages);
+router.get("/debug/messages", requireDebugEnabled, getDebugMessages);
+router.post("/debug/messages", requireDebugEnabled, postDebugMessage);
+router.delete("/debug/messages", requireDebugEnabled, deleteDebugMessages);
 
 export default router;
