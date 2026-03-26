@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BotLevel {
+  EASY
+  NORMAL
+  HARD
+}
+
+enum MatchType {
+  CPU
+  PVP
+}
+
+enum MatchStatus {
+  WAITING
+  ACTIVE
+  FINISHED
+}
+
+enum Side {
+  BUY
+  SELL
+}
+
+enum ActionType {
+  BUY
+  SELL
+  HOLD
+  ITEM
+}
+
+enum ItemType {
+  PRICE_SPIKE
+  SHIELD
+  DOUBLE_FORCE
+}
+
+enum RewardType {
+  COIN
+  ITEM
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  name                String
+  avatarId            String
+  lifePoints          Int      @default(150)
+  coins               Int      @default(0)
+  lastLoginBonusAt    DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  playerStates        MatchPlayerState[]
+  actions             TurnAction[]
+  rewards             Reward[]
+  inventories         UserItem[]
+}
+
+model Avatar {
+  id                  String   @id
+  label               String
+  buyPowerMultiplier  Float    @default(1)
+  sellPowerMultiplier Float    @default(1)
+
+  users               User[]
+}
+
+model Match {
+  id                  String   @id @default(cuid())
+  type                MatchType
+  status              MatchStatus @default(ACTIVE)
+  botLevel            BotLevel?
+  initialPrice        Decimal  @db.Decimal(10, 2)
+  currentPrice        Decimal  @db.Decimal(10, 2)
+  targetUpperPrice    Decimal  @db.Decimal(10, 2)
+  targetLowerPrice    Decimal  @db.Decimal(10, 2)
+  maxTurns            Int
+  turnNumber          Int      @default(1)
+  winnerSide          Side?
+  startedAt           DateTime @default(now())
+  endedAt             DateTime?
+
+  turns               MatchTurn[]
+  players             MatchPlayerState[]
+}
+
+model MatchPlayerState {
+  id                  String   @id @default(cuid())
+  matchId             String
+  userId              String
+  side                Side
+  cash                Int
+  hp                  Int      @default(3)
+  isCpu               Boolean  @default(false)
+
+  match               Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [userId], references: [id])
+
+  @@unique([matchId, side])
+}
+
+model MatchTurn {
+  id                  String   @id @default(cuid())
+  matchId             String
+  turnNumber          Int
+  openPrice           Decimal  @db.Decimal(10, 2)
+  highPrice           Decimal  @db.Decimal(10, 2)
+  lowPrice            Decimal  @db.Decimal(10, 2)
+  closePrice          Decimal  @db.Decimal(10, 2)
+  buyTotal            Int
+  sellTotal           Int
+  createdAt           DateTime @default(now())
+
+  match               Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  actions             TurnAction[]
+
+  @@unique([matchId, turnNumber])
+}
+
+model TurnAction {
+  id                  String   @id @default(cuid())
+  matchTurnId         String
+  userId              String
+  actionType          ActionType
+  amount              Int      @default(0)
+  itemType            ItemType?
+  createdAt           DateTime @default(now())
+
+  matchTurn           MatchTurn @relation(fields: [matchTurnId], references: [id], onDelete: Cascade)
+  user                User      @relation(fields: [userId], references: [id])
+}
+
+model Item {
+  id                  String   @id
+  itemType            ItemType @unique
+  label               String
+  description         String
+  powerValue          Int
+
+  userItems           UserItem[]
+}
+
+model UserItem {
+  id                  String   @id @default(cuid())
+  userId              String
+  itemId              String
+  quantity            Int      @default(0)
+
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item                Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+}
+
+model Reward {
+  id                  String   @id @default(cuid())
+  userId              String
+  matchId             String?
+  rewardType          RewardType
+  coinAmount          Int      @default(0)
+  itemId              String?
+  quantity            Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
