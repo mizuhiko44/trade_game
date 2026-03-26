@@ -36,10 +36,12 @@ npm run dev
 ```bash
 cd apps/mobile
 npm install
+cp .env.example .env
 npm run start
 ```
 
 Expo の QR コードから iOS/Android シミュレータまたは実機で起動します。
+実機で Expo Go を使う場合、`apps/mobile/.env` の `EXPO_PUBLIC_API_BASE_URL` は `localhost` ではなくPCのローカルIP（例: `http://192.168.0.12:4000`）を設定してください。
 
 ## MVP でできること
 - ホーム画面でユーザ情報確認
