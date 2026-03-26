@@ -91,7 +91,7 @@ export async function startCpuMatch(input: StartCpuMatchInput) {
   return match;
 }
 
-function cpuDecision(botLevel: BotLevel, turn: number) {
+function cpuDecision(botLevel: BotLevel, turn: number): { actionType: ActionType; amount: number } {
   const base = Math.min(GAME_CONFIG.maxInvestmentPerTurn, 80 + turn * 10);
   const amount = Math.round(base * levelMultiplier[botLevel]);
   return { actionType: ActionType.SELL, amount };
@@ -158,7 +158,7 @@ export async function resolveTurn(input: ResolveTurnInput) {
     }
   });
 
-  let status = MatchStatus.ACTIVE;
+  let status: MatchStatus = MatchStatus.ACTIVE;
   let winnerSide: Side | null = null;
 
   if (close >= Number(match.targetUpperPrice)) {

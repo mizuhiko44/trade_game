@@ -84,3 +84,8 @@ curl "http://localhost:4000/api/debug/messages?limit=20"
 ```bash
 curl -X DELETE "http://localhost:4000/api/debug/messages"
 ```
+
+## CI
+- GitHub Actions で Push / Pull Request 時に以下を自動実行します。
+  - `apps/server`: `npm install` → `npm run typecheck` → `npm run build`
+  - `apps/mobile`: `npm install` → `npm run typecheck`
