@@ -64,7 +64,7 @@ export default function DebugScreen() {
         {messages.length === 0 ? (
           <Text>まだメッセージがありません。</Text>
         ) : (
-          messages.map((m) => (
+          messages.map((m: DebugMessage) => (
             <View key={m.id} style={{ padding: 10, borderWidth: 1, marginBottom: 8, borderRadius: 8 }}>
               <Text style={{ fontWeight: "600" }}>{m.text}</Text>
               <Text>source: {m.source}</Text>
