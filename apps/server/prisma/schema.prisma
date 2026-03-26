@@ -61,6 +61,7 @@ model User {
   actions             TurnAction[]
   rewards             Reward[]
   inventories         UserItem[]
+  avatar              Avatar   @relation(fields: [avatarId], references: [id])
 }
 
 model Avatar {
