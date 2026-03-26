@@ -36,6 +36,7 @@ export default function HomeScreen() {
           router.push({ pathname: "/battle", params: { matchId: data.match.id } });
         }}
       />
+      <Button title="デバッグ受信画面へ" onPress={() => router.push("/debug")} />
     </View>
   );
 }

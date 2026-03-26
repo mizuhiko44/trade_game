@@ -65,3 +65,10 @@ curl -X POST http://localhost:4000/api/matches/<matchId>/actions \
   -H 'Content-Type: application/json' \
   -d '{"userId":"demo-user","actionType":"BUY","amount":100}'
 ```
+
+### 外部デバッグメッセージ送信（Debug画面確認用）
+```bash
+curl -X POST http://localhost:4000/api/debug/messages \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"hello from curl","source":"curl"}'
+```

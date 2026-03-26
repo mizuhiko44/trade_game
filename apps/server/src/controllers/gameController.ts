@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { claimLoginBonus, getMatch, getUserHome, resolveTurn, startCpuMatch } from "../services/gameService";
+import { addDebugMessage, listDebugMessages } from "../services/debugService";
 
 const startMatchSchema = z.object({
   userId: z.string(),
@@ -59,6 +60,26 @@ export async function matchDetail(req: Request, res: Response) {
   try {
     const match = await getMatch(req.params.matchId);
     res.json({ match });
+  } catch (e) {
+    res.status(400).json({ message: (e as Error).message });
+  }
+}
+
+export async function postDebugMessage(req: Request, res: Response) {
+  try {
+    const parsed = z.object({ text: z.string().min(1), source: z.string().optional() }).parse(req.body);
+    const message = addDebugMessage(parsed.text, parsed.source ?? "external");
+    res.status(201).json({ message });
+  } catch (e) {
+    res.status(400).json({ message: (e as Error).message });
+  }
+}
+
+export async function getDebugMessages(req: Request, res: Response) {
+  try {
+    const limit = Number(req.query.limit ?? 20);
+    const messages = listDebugMessages(limit);
+    res.json({ messages });
   } catch (e) {
     res.status(400).json({ message: (e as Error).message });
   }

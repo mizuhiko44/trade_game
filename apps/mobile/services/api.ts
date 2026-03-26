@@ -31,3 +31,8 @@ export async function sendAction(matchId: string, actionType: "BUY" | "SELL" | "
   });
   return res.json();
 }
+
+export async function fetchDebugMessages() {
+  const res = await fetch(`${API_BASE_URL}/debug/messages?limit=20`);
+  return res.json();
+}
