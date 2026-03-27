@@ -108,3 +108,12 @@ curl -X DELETE "http://localhost:4000/api/debug/messages"
 - GitHub Actions で Push / Pull Request 時に以下を自動実行します。
   - `apps/server`: `npm install` → `npm run typecheck` → `npm run build`
   - `apps/mobile`: `npm install` → `npm run typecheck`
+
+## バックログIssueの自動反映
+- 残課題は `docs/issue-backlog.json` に管理します。
+- `.github/workflows/sync-issues.yml` がこのファイル変更時に起動し、GitHub Issueへ自動同期します。
+- ローカル実行する場合:
+  ```bash
+  export GITHUB_TOKEN=<token>
+  bash scripts/sync-issues.sh
+  ```
