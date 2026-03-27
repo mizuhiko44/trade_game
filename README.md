@@ -74,6 +74,18 @@ curl -X POST http://localhost:4000/api/matches/<matchId>/actions \
   -d '{"userId":"demo-user","actionType":"BUY","amount":100}'
 ```
 
+### PvPキュー参加
+```bash
+curl -X POST http://localhost:4000/api/matches/pvp/queue \
+  -H 'Content-Type: application/json' \
+  -d '{"userId":"demo-user"}'
+```
+
+### ランキング取得
+```bash
+curl "http://localhost:4000/api/rankings?limit=20"
+```
+
 ### 外部デバッグメッセージ送信（Debug画面確認用）
 ```bash
 curl -X POST http://localhost:4000/api/debug/messages \

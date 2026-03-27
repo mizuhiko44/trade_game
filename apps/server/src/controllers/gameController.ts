@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { claimLoginBonus, getMatch, getUserHome, resolveTurn, startCpuMatch } from "../services/gameService";
 import { addDebugMessage, clearDebugMessages, listDebugMessages } from "../services/debugService";
+import { enqueuePvp, getPvpTicket, getRanking } from "../services/pvpService";
 
 const startMatchSchema = z.object({
   userId: z.string(),
@@ -89,6 +90,36 @@ export async function deleteDebugMessages(_req: Request, res: Response, next: Ne
   try {
     const result = clearDebugMessages();
     res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function pvpQueue(req: Request, res: Response, next: NextFunction) {
+  try {
+    const parsed = z.object({ userId: z.string() }).parse(req.body);
+    const ticket = await enqueuePvp(parsed.userId);
+    res.status(201).json({ ticket });
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function pvpQueueStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const ticket = getPvpTicket(req.params.ticketId);
+    if (!ticket) return res.status(404).json({ code: "NOT_FOUND", message: "ticket not found" });
+    res.json({ ticket });
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function rankings(req: Request, res: Response, next: NextFunction) {
+  try {
+    const limit = z.coerce.number().int().min(1).max(100).parse(req.query.limit ?? 20);
+    const ranking = await getRanking(limit);
+    res.json({ ranking });
   } catch (e) {
     next(e);
   }
