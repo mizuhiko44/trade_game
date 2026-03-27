@@ -11,6 +11,7 @@
 - `apps/mobile`: Expo アプリ
 - `apps/server`: API サーバ
 - `docs/mvp-design.md`: 設計・API・優先順位
+- `docs/ui-design-spec.md`: UIレイアウト仕様
 
 ## ローカル起動手順
 

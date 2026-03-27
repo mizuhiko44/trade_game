@@ -11,6 +11,12 @@ type TurnCandle = {
 
 type Props = {
   turns: TurnCandle[];
+  executions?: Array<{
+    id: string;
+    turnNumber: number;
+    price: number;
+    side: "BUY" | "SELL";
+  }>;
 };
 
 const CHART_HEIGHT = 170;
@@ -19,7 +25,7 @@ function toNum(v: string | number) {
   return typeof v === "string" ? Number(v) : v;
 }
 
-export default function CandlestickChart({ turns }: Props) {
+export default function CandlestickChart({ turns, executions = [] }: Props) {
   if (!turns.length) {
     return <Text>まだローソク足データはありません（最初の行動後に表示）</Text>;
   }
@@ -80,6 +86,34 @@ export default function CandlestickChart({ turns }: Props) {
                     backgroundColor: color
                   }}
                 />
+                {executions
+                  .filter((e) => e.turnNumber === t.turnNumber)
+                  .map((e) => {
+                    const markerY = y(e.price);
+                    const markerColor = e.side === "BUY" ? "#2563eb" : "#7c3aed";
+                    return (
+                      <View
+                        key={e.id}
+                        style={{
+                          position: "absolute",
+                          top: markerY,
+                          left: 0,
+                          width: 18,
+                          alignItems: "center"
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 3,
+                            backgroundColor: markerColor
+                          }}
+                        />
+                        <Text style={{ fontSize: 8, color: markerColor }}>{e.side === "BUY" ? "B" : "S"}</Text>
+                      </View>
+                    );
+                  })}
               </View>
             );
           })}

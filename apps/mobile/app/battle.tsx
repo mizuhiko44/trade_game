@@ -42,6 +42,12 @@ export default function BattleScreen() {
   const [limitPrice, setLimitPrice] = useState("100");
   const [assetType, setAssetType] = useState<keyof typeof CHART_PRESETS>("USDJPY");
   const [notice, setNotice] = useState<string | null>(null);
+  const [turnInfo, setTurnInfo] = useState<string>("あなたのターン");
+  const [isUserTurn, setIsUserTurn] = useState(true);
+  const [remainingSec, setRemainingSec] = useState(60);
+  const [executions, setExecutions] = useState<
+    Array<{ id: string; turnNumber: number; price: number; side: "BUY" | "SELL" }>
+  >([]);
 
   const chartData = useMemo(
     () => [...CHART_PRESETS[assetType], ...((state?.turns as any[]) ?? [])],
@@ -52,8 +58,12 @@ export default function BattleScreen() {
   const selfPlayer = state?.players?.find((p: any) => p.userId === "demo-user");
   const opponentPlayer = state?.players?.find((p: any) => p.userId !== "demo-user");
 
-  async function action(type: TradeAction) {
+  async function action(type: TradeAction, source: "USER" | "AUTO" = "USER") {
     if (!matchId) return;
+    if (source === "USER" && !isUserTurn) {
+      setNotice("現在は相手ターンです。");
+      return;
+    }
     try {
       setError(null);
       setNotice(null);
@@ -75,6 +85,20 @@ export default function BattleScreen() {
 
       const data = await sendAction(matchId, type, type === "HOLD" ? 0 : amount);
       setState(data.match);
+      if ((type === "BUY" || type === "SELL") && data.turn) {
+        setExecutions((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            turnNumber: data.turn.turnNumber,
+            price: Number(data.turn.closePrice),
+            side: type
+          }
+        ]);
+      }
+      setRemainingSec(60);
+      setIsUserTurn(false);
+      setTimeout(() => setIsUserTurn(true), 5000);
       if (data.match.status === "FINISHED") {
         router.push({
           pathname: "/result",
@@ -100,17 +124,33 @@ export default function BattleScreen() {
   useEffect(() => {
     if (!matchId) return;
     const timer = setInterval(() => {
-      if (state?.status !== "FINISHED") {
-        void action("HOLD");
-      }
-    }, 5000);
+      if (state?.status === "FINISHED") return;
+      setRemainingSec((prev) => {
+        if (!isUserTurn) return prev;
+        if (prev <= 1) {
+          void action("HOLD", "AUTO");
+          setNotice("60秒間操作がなかったためパスしました。相手ターンです。");
+          return 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     return () => clearInterval(timer);
-  }, [matchId, state?.status]);
+  }, [matchId, state?.status, isUserTurn]);
+
+  useEffect(() => {
+    if (isUserTurn) {
+      setTurnInfo(`あなたのターン（残り ${remainingSec} 秒）`);
+    } else {
+      setTurnInfo("相手ターン...");
+    }
+  }, [isUserTurn, remainingSec]);
 
   return (
     <View style={{ flex: 1, gap: 10, padding: 20 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>対戦画面</Text>
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
+      <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
       <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
@@ -147,7 +187,7 @@ export default function BattleScreen() {
           style={{ borderWidth: 1, borderRadius: 8, padding: 8 }}
         />
       ) : null}
-      <CandlestickChart turns={chartData} />
+      <CandlestickChart turns={chartData} executions={executions} />
       <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
       <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
       <Button title="Hold" onPress={() => action("HOLD")} />
