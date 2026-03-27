@@ -1,0 +1,8 @@
+{
+  "expo": {
+    "name": "Trade Game MVP",
+    "slug": "trade-game-mvp",
+    "scheme": "tradegame",
+    "plugins": ["expo-router"]
+  }
+}
