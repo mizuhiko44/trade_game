@@ -59,6 +59,7 @@ export default function BattleScreen() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
   const [chartTapPrice, setChartTapPrice] = useState<number | null>(null);
+  const [startLog, setStartLog] = useState<string[]>([]);
 
   const chartData = useMemo(
     () => [...CHART_PRESETS[assetType], ...((state?.turns as any[]) ?? [])],
@@ -69,6 +70,10 @@ export default function BattleScreen() {
   const selfPlayer = state?.players?.find((p: any) => p.userId === "demo-user");
   const opponentPlayer = state?.players?.find((p: any) => p.userId !== "demo-user");
 
+  function pushStartLog(message: string) {
+    const timestamp = new Date().toISOString().slice(11, 19);
+    setStartLog((prev) => [`${timestamp} ${message}`, ...prev].slice(0, 8));
+  }
 
   useEffect(() => {
     if (matchId || autoStart !== "1") return;
@@ -76,12 +81,16 @@ export default function BattleScreen() {
     void (async () => {
       try {
         setNotice("対戦を開始しています...");
+        pushStartLog("autoStart 検知");
         const data = await startCpuMatch(botLevel ?? "NORMAL");
         if (!active) return;
+        pushStartLog(`マッチ作成成功: ${data.match.id}`);
         router.replace({ pathname: "/battle", params: { matchId: data.match.id } });
       } catch (e) {
         if (!active) return;
-        setError((e as Error).message);
+        const msg = (e as Error).message;
+        setError(msg);
+        pushStartLog(`マッチ作成失敗: ${msg}`);
       }
     })();
     return () => {
@@ -203,6 +212,9 @@ export default function BattleScreen() {
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
       <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
+      {startLog.map((line) => (
+        <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
+      ))}
       <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
       <Text>ターン: {state?.turnNumber ?? 1}</Text>

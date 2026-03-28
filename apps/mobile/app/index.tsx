@@ -8,6 +8,7 @@ export default function HomeScreen() {
   const [user, setUser] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [startingMatch, setStartingMatch] = useState(false);
+  const [startLog, setStartLog] = useState<string[]>([]);
 
   async function load() {
     try {
@@ -22,6 +23,12 @@ export default function HomeScreen() {
   useEffect(() => {
     load();
   }, []);
+
+  function pushStartLog(message: string) {
+    const timestamp = new Date().toISOString().slice(11, 19);
+    setStartLog((prev) => [`${timestamp} ${message}`, ...prev].slice(0, 5));
+  }
+
 
   return (
     <View style={{ flex: 1, gap: 12, padding: 20 }}>
@@ -43,11 +50,26 @@ export default function HomeScreen() {
         onPress={async () => {
           setError(null);
           setStartingMatch(true);
-          router.push({ pathname: "/battle", params: { autoStart: "1", botLevel: "NORMAL" } });
-          setStartingMatch(false);
+          pushStartLog("対戦画面への遷移を開始");
+          try {
+            router.push({ pathname: "/battle", params: { autoStart: "1", botLevel: "NORMAL" } });
+            pushStartLog("router.push 実行完了");
+          } catch (e) {
+            const msg = (e as Error).message;
+            setError(msg);
+            pushStartLog(`router.push 失敗: ${msg}`);
+          } finally {
+            setStartingMatch(false);
+          }
         }}
       />
       <Button title="デバッグ受信画面へ" onPress={() => router.push("/debug")} />
+
+      <Text style={{ fontWeight: "700" }}>起動ログ</Text>
+      {startLog.length === 0 ? <Text style={{ color: "#666" }}>ログなし</Text> : null}
+      {startLog.map((line) => (
+        <Text key={line} style={{ fontSize: 12, color: "#334155" }}>{line}</Text>
+      ))}
     </View>
   );
 }
