@@ -1,11 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Button, Text, TextInput, View } from "react-native";
+import { Button, ScrollView, Text, View } from "react-native";
 import CandlestickChart from "../components/CandlestickChart";
 import { closePosition, fetchPositions, sendAction, startCpuMatch } from "../services/api";
 
 type TradeAction = "BUY" | "SELL" | "HOLD" | "SETTLE";
-type OrderType = "MARKET" | "LIMIT";
 type Position = {
   id: string;
   positionId?: string;
@@ -49,8 +48,6 @@ export default function BattleScreen() {
   const [state, setState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [amount] = useState(100);
-  const [orderType, setOrderType] = useState<OrderType>("MARKET");
-  const [limitPrice, setLimitPrice] = useState("100");
   const assetType: keyof typeof CHART_PRESETS = "USDJPY";
   const [notice, setNotice] = useState<string | null>(null);
   const [turnInfo, setTurnInfo] = useState<string>("あなたのターン");
@@ -118,15 +115,6 @@ export default function BattleScreen() {
         await sendAction(matchId, "HOLD", 0);
         setNotice("ポジションを決済しました（MVPではHoldとして処理）");
         return;
-      }
-
-      if (orderType === "LIMIT" && (type === "BUY" || type === "SELL")) {
-        const limit = Number(limitPrice);
-        const shouldFill = type === "BUY" ? currentPrice <= limit : currentPrice >= limit;
-        if (!shouldFill) {
-          setNotice(`指値未約定 (${type}) : 現在価格=${currentPrice.toFixed(2)} / 指値=${limit.toFixed(2)}`);
-          return;
-        }
       }
 
       const data = await sendAction(matchId, type, type === "HOLD" ? 0 : amount);
@@ -207,7 +195,7 @@ export default function BattleScreen() {
   }));
 
   return (
-    <View style={{ flex: 1, gap: 10, padding: 20 }}>
+    <ScrollView contentContainerStyle={{ gap: 10, padding: 20 }} style={{ flex: 1 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>対戦画面</Text>
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
       <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
@@ -223,20 +211,6 @@ export default function BattleScreen() {
         自分: {AVATAR_PRESETS[selfPlayer?.userId ?? "demo-user"] ?? "🙂"} / 相手:{" "}
         {AVATAR_PRESETS[opponentPlayer?.userId ?? "cpu-normal"] ?? "🤖"}
       </Text>
-      <Text>注文方式</Text>
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Button title="成行" onPress={() => setOrderType("MARKET")} />
-        <Button title="指値" onPress={() => setOrderType("LIMIT")} />
-      </View>
-      {orderType === "LIMIT" ? (
-        <TextInput
-          value={limitPrice}
-          onChangeText={setLimitPrice}
-          keyboardType="numeric"
-          placeholder="指値価格"
-          style={{ borderWidth: 1, borderRadius: 8, padding: 8 }}
-        />
-      ) : null}
       <CandlestickChart
         turns={chartData}
         executions={executionMarkers}
@@ -294,6 +268,6 @@ export default function BattleScreen() {
         onPress={() => useItem("DOUBLE_FORCE")}
       />
       <Button title="決済" onPress={() => action("SETTLE")} />
-    </View>
+    </ScrollView>
   );
 }
