@@ -6,6 +6,17 @@ import { closePosition, fetchPositions, sendAction } from "../services/api";
 
 type TradeAction = "BUY" | "SELL" | "HOLD" | "SETTLE";
 type OrderType = "MARKET" | "LIMIT";
+type Position = {
+  id: string;
+  positionId?: string;
+  entryTurn: number;
+  exitTurn?: number;
+  entryPrice: number | string;
+  exitPrice?: number | string;
+  side: "BUY" | "SELL" | string;
+  status: "OPEN" | "CLOSED" | string;
+  orderType: "MARKET" | "LIMIT" | string;
+};
 
 const AVATAR_PRESETS: Record<string, string> = {
   "demo-user": "🧑‍💼",
@@ -45,7 +56,7 @@ export default function BattleScreen() {
   const [turnInfo, setTurnInfo] = useState<string>("あなたのターン");
   const [isUserTurn, setIsUserTurn] = useState(true);
   const [remainingSec, setRemainingSec] = useState(60);
-  const [positions, setPositions] = useState<any[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
 
   const chartData = useMemo(
@@ -60,7 +71,7 @@ export default function BattleScreen() {
   async function refreshPositions() {
     if (!matchId) return;
     const data = await fetchPositions(matchId);
-    setPositions(data.positions ?? []);
+    setPositions((data.positions ?? []) as Position[]);
   }
 
   async function action(type: TradeAction, source: "USER" | "AUTO" = "USER") {
@@ -147,14 +158,22 @@ export default function BattleScreen() {
     }
   }, [isUserTurn, remainingSec]);
 
-  const executionMarkers = positions.map((p) => ({
-    id: p.id,
-    positionId: p.id,
-    turnNumber: p.status === "OPEN" ? p.entryTurn : (p.exitTurn ?? p.entryTurn),
-    price: p.status === "OPEN" ? Number(p.entryPrice) : Number(p.exitPrice ?? p.entryPrice),
+  const executionMarkers: Array<{
+    id: string;
+    positionId: string;
+    turnNumber: number;
+    price: number;
+    side: "BUY" | "SELL";
+    status: "OPEN" | "CLOSED";
+    orderType: "MARKET" | "LIMIT";
+  }> = positions.map((p) => ({
+    id: String(p.id),
+    positionId: String(p.id),
+    turnNumber: Number(p.status === "OPEN" ? p.entryTurn : p.exitTurn ?? p.entryTurn),
+    price: Number(p.status === "OPEN" ? p.entryPrice : p.exitPrice ?? p.entryPrice),
     side: p.side === "BUY" ? "BUY" : "SELL",
-    status: p.status,
-    orderType: p.orderType
+    status: p.status === "CLOSED" ? "CLOSED" : "OPEN",
+    orderType: p.orderType === "LIMIT" ? "LIMIT" : "MARKET"
   }));
 
   return (
