@@ -327,7 +327,8 @@ export async function resolveTurn(input: ResolveTurnInput) {
     close
   });
 
-  return { match: updated, turn };
+  const displaySubturn = currentSubturn >= 3 ? 3 : currentSubturn;
+  return { match: { ...updated, subturn: displaySubturn }, turn };
 }
 
 export async function getMatch(matchId: string) {

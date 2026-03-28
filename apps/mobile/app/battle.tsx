@@ -12,6 +12,7 @@ type Position = {
   entryTurn: number;
   exitTurn?: number;
   entryPrice: number | string;
+  quantity?: number;
   exitPrice?: number | string;
   userId?: string;
   side: "BUY" | "SELL" | string;
@@ -52,7 +53,7 @@ export default function BattleScreen() {
   const { matchId, autoStart, botLevel } = useLocalSearchParams<{ matchId?: string; autoStart?: string; botLevel?: "EASY" | "NORMAL" | "HARD" }>();
   const [state, setState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [amount] = useState(100);
+  const [amount, setAmount] = useState(100);
   const assetType: keyof typeof CHART_PRESETS = "USDJPY";
   const [notice, setNotice] = useState<string | null>(null);
   const [turnInfo, setTurnInfo] = useState<string>("あなたのターン");
@@ -71,6 +72,21 @@ export default function BattleScreen() {
   const currentPrice = Number(state?.currentPrice ?? 100);
   const selfPlayer = state?.players?.find((p: any) => p.userId === "demo-user");
   const opponentPlayer = state?.players?.find((p: any) => p.userId !== "demo-user");
+
+  const openExposure = positions
+    .filter((p) => p.status === "OPEN" && p.userId === "demo-user")
+    .reduce((sum, p) => sum + Number(p.quantity ?? 0), 0);
+  const availableCash = Math.max(0, Number(selfPlayer?.cash ?? 1000) - openExposure);
+  const maxLot = Math.max(50, Math.floor(availableCash / 50) * 50 || 50);
+  const lotOptions = useMemo(() => {
+    const values: number[] = [];
+    for (let lot = 50; lot <= maxLot; lot += 50) values.push(lot);
+    return values;
+  }, [maxLot]);
+
+  useEffect(() => {
+    if (amount > maxLot) setAmount(maxLot);
+  }, [amount, maxLot]);
 
   function pushStartLog(message: string) {
     const timestamp = new Date().toISOString().slice(11, 19);
@@ -221,8 +237,6 @@ export default function BattleScreen() {
         <Text style={{ fontSize: 12, color: "#64748b" }}>autoStart: {String(autoStart ?? "-")}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>param matchId: {String(matchId ?? "-")}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>state matchId: {String(state?.id ?? "-")}</Text>
-        <Text style={{ fontSize: 12, color: "#64748b" }}>API: {API_BASE_URL}</Text>
-        <Text style={{ fontSize: 12, color: "#64748b" }}>API Source: {API_BASE_URL_SOURCE}</Text>
         {startLog.map((line) => (
           <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
         ))}
@@ -230,7 +244,16 @@ export default function BattleScreen() {
       <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
       <Text>ターン: {state?.turnNumber ?? 1}</Text>
+      <Text>ローソク足内バトル: {Number(state?.subturn ?? 1)}/3</Text>
       <Text>目標価格: 上110 / 下90</Text>
+      <Text>ロット選択（最大 {maxLot}）</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator style={{ maxHeight: 44 }}>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {lotOptions.map((lot) => (
+            <Button key={lot} title={lot === amount ? `●${lot}` : String(lot)} onPress={() => setAmount(lot)} />
+          ))}
+        </View>
+      </ScrollView>
       <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
       {state?.status === "FINISHED" ? (
         <Text style={{ fontWeight: "700" }}>
@@ -299,6 +322,10 @@ export default function BattleScreen() {
         onPress={() => useItem("DOUBLE_FORCE")}
       />
       <Button title="決済" onPress={() => action("SETTLE")} />
+      <View style={{ borderTopWidth: 1, borderColor: "#cbd5e1", paddingTop: 8, marginTop: 8 }}>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>API: {API_BASE_URL}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>API Source: {API_BASE_URL_SOURCE}</Text>
+      </View>
     </ScrollView>
   );
 }

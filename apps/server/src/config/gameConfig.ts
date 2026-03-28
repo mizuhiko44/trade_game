@@ -3,7 +3,7 @@ export const GAME_CONFIG = {
   initialPrice: 100,
   upperTarget: 110,
   lowerTarget: 90,
-  maxTurns: 10,
+  maxTurns: 5,
   maxInvestmentPerTurn: 300,
   matchCostLifePoints: 30,
   loginBonusLifePoints: 150,
