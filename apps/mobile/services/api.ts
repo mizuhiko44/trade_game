@@ -80,8 +80,9 @@ export async function fetchMatch(matchId: string) {
   return requestJson(`/matches/${matchId}`);
 }
 
-export async function fetchPositions(matchId: string, userId = USER_ID) {
-  return requestJson(`/matches/${matchId}/positions?userId=${userId}`);
+export async function fetchPositions(matchId: string, userId?: string) {
+  const suffix = userId ? `?userId=${userId}` : "";
+  return requestJson(`/matches/${matchId}/positions${suffix}`);
 }
 
 export async function closePosition(positionId: string, closePrice: number, closeTurn: number) {

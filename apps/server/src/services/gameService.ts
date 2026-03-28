@@ -9,7 +9,7 @@ import {
 } from "@prisma/client";
 import { GAME_CONFIG, REWARDS } from "../config/gameConfig";
 import { auditLog } from "./auditLogService";
-import { createPosition } from "./positionService";
+import { calculatePnlBySide, closeAllOpenPositions, createPosition } from "./positionService";
 import { ResolveTurnInput, StartCpuMatchInput } from "../types/game";
 
 const prisma = new PrismaClient();
@@ -26,6 +26,7 @@ type MatchEffectState = {
 };
 
 const matchEffects = new Map<string, MatchEffectState>();
+const matchSubturnCounts = new Map<string, number>();
 
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
@@ -191,28 +192,46 @@ export async function resolveTurn(input: ResolveTurnInput) {
   }
   matchEffects.set(match.id, effectState);
 
-  const turn = await prisma.matchTurn.create({
-    data: {
-      matchId: match.id,
-      turnNumber: match.turnNumber,
-      openPrice: open,
-      highPrice: high,
-      lowPrice: low,
-      closePrice: close,
-      buyTotal,
-      sellTotal,
-      actions: {
-        create: [
-          {
-            userId: player.userId,
-            actionType: input.action.actionType,
-            amount: playerEffectiveAmount,
-            itemType: input.action.itemType
-          },
-          { userId: cpu.userId, actionType: botMove.actionType, amount: cpuEffectiveAmount }
-        ]
-      }
-    }
+  const currentSubturn = (matchSubturnCounts.get(match.id) ?? 0) + 1;
+  const existingTurn = await prisma.matchTurn.findUnique({
+    where: { matchId_turnNumber: { matchId: match.id, turnNumber: match.turnNumber } }
+  });
+
+  const turn = existingTurn
+    ? await prisma.matchTurn.update({
+        where: { id: existingTurn.id },
+        data: {
+          highPrice: Math.max(Number(existingTurn.highPrice), high),
+          lowPrice: Math.min(Number(existingTurn.lowPrice), low),
+          closePrice: close,
+          buyTotal: existingTurn.buyTotal + buyTotal,
+          sellTotal: existingTurn.sellTotal + sellTotal
+        }
+      })
+    : await prisma.matchTurn.create({
+        data: {
+          matchId: match.id,
+          turnNumber: match.turnNumber,
+          openPrice: open,
+          highPrice: high,
+          lowPrice: low,
+          closePrice: close,
+          buyTotal,
+          sellTotal
+        }
+      });
+
+  await prisma.turnAction.createMany({
+    data: [
+      {
+        matchTurnId: turn.id,
+        userId: player.userId,
+        actionType: input.action.actionType,
+        amount: playerEffectiveAmount,
+        itemType: input.action.itemType
+      },
+      { matchTurnId: turn.id, userId: cpu.userId, actionType: botMove.actionType, amount: cpuEffectiveAmount }
+    ]
   });
 
   if (input.action.actionType === ActionType.BUY || input.action.actionType === ActionType.SELL) {
@@ -221,8 +240,20 @@ export async function resolveTurn(input: ResolveTurnInput) {
       userId: player.userId,
       side: input.action.actionType === ActionType.BUY ? Side.BUY : Side.SELL,
       orderType: "MARKET",
-      entryPrice: Number(turn.closePrice),
+      entryPrice: afterPlayer,
       quantity: Math.max(1, playerEffectiveAmount),
+      entryTurn: match.turnNumber
+    });
+  }
+
+  if (botMove.actionType === ActionType.BUY || botMove.actionType === ActionType.SELL) {
+    createPosition({
+      matchId: match.id,
+      userId: cpu.userId,
+      side: botMove.actionType === ActionType.BUY ? Side.BUY : Side.SELL,
+      orderType: "MARKET",
+      entryPrice: close,
+      quantity: Math.max(1, cpuEffectiveAmount),
       entryTurn: match.turnNumber
     });
   }
@@ -236,16 +267,29 @@ export async function resolveTurn(input: ResolveTurnInput) {
   } else if (close <= Number(match.targetLowerPrice)) {
     status = MatchStatus.FINISHED;
     winnerSide = Side.SELL;
-  } else if (match.turnNumber >= match.maxTurns) {
+  } else if (match.turnNumber >= match.maxTurns && currentSubturn >= 3) {
     status = MatchStatus.FINISHED;
     winnerSide = close >= Number(match.initialPrice) ? Side.BUY : Side.SELL;
   }
+
+  if (status === MatchStatus.FINISHED) {
+    closeAllOpenPositions(match.id, close, match.turnNumber);
+    const pnlBySide = calculatePnlBySide(
+      match.id,
+      new Map(match.players.map((p) => [p.userId, p.side]))
+    );
+    if (pnlBySide.BUY !== pnlBySide.SELL) {
+      winnerSide = pnlBySide.BUY > pnlBySide.SELL ? Side.BUY : Side.SELL;
+    }
+  }
+
+  const nextTurnNumber = status === MatchStatus.FINISHED ? match.turnNumber : currentSubturn >= 3 ? match.turnNumber + 1 : match.turnNumber;
 
   const updated = await prisma.match.update({
     where: { id: match.id },
     data: {
       currentPrice: close,
-      turnNumber: status === MatchStatus.FINISHED ? match.turnNumber : match.turnNumber + 1,
+      turnNumber: nextTurnNumber,
       status,
       winnerSide,
       endedAt: status === MatchStatus.FINISHED ? new Date() : null
@@ -257,6 +301,7 @@ export async function resolveTurn(input: ResolveTurnInput) {
   });
 
   if (status === MatchStatus.FINISHED) {
+    matchSubturnCounts.delete(match.id);
     const isWin = winnerSide === player.side;
     await prisma.user.update({
       where: { id: player.userId },
@@ -268,11 +313,14 @@ export async function resolveTurn(input: ResolveTurnInput) {
       playerUserId: player.userId,
       result: isWin ? "WIN" : "LOSE"
     });
+  } else {
+    matchSubturnCounts.set(match.id, currentSubturn >= 3 ? 0 : currentSubturn);
   }
 
   auditLog("TURN_RESOLVED", {
     matchId: match.id,
     turnNumber: match.turnNumber,
+    subturn: currentSubturn,
     actionType: input.action.actionType,
     buyTotal,
     sellTotal,

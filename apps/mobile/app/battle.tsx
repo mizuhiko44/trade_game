@@ -13,9 +13,11 @@ type Position = {
   exitTurn?: number;
   entryPrice: number | string;
   exitPrice?: number | string;
+  userId?: string;
   side: "BUY" | "SELL" | string;
   status: "OPEN" | "CLOSED" | string;
   orderType: "MARKET" | "LIMIT" | string;
+  realizedPnl?: number;
 };
 
 const AVATAR_PRESETS: Record<string, string> = {
@@ -93,7 +95,8 @@ export default function BattleScreen() {
         pushStartLog(`マッチ作成失敗: ${msg}`);
       }
     })();
-    return () => {
+  
+  return () => {
       active = false;
     };
   }, [autoStart, botLevel, matchId, router]);
@@ -197,6 +200,16 @@ export default function BattleScreen() {
     orderType: p.orderType === "LIMIT" ? "LIMIT" : "MARKET"
   }));
 
+  const pnlBySide = positions.reduce(
+    (acc, p) => {
+      if (typeof p.realizedPnl !== "number") return acc;
+      const side = p.side === "BUY" ? "BUY" : "SELL";
+      acc[side] += p.realizedPnl;
+      return acc;
+    },
+    { BUY: 0, SELL: 0 }
+  );
+
   return (
     <ScrollView contentContainerStyle={{ gap: 10, padding: 20 }} style={{ flex: 1 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>対戦画面</Text>
@@ -218,6 +231,12 @@ export default function BattleScreen() {
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
       <Text>ターン: {state?.turnNumber ?? 1}</Text>
       <Text>目標価格: 上110 / 下90</Text>
+      <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
+      {state?.status === "FINISHED" ? (
+        <Text style={{ fontWeight: "700" }}>
+          損益勝者: {pnlBySide.BUY === pnlBySide.SELL ? "DRAW" : pnlBySide.BUY > pnlBySide.SELL ? "BUY" : "SELL"}
+        </Text>
+      ) : null}
       <Text>
         自分: {AVATAR_PRESETS[selfPlayer?.userId ?? "demo-user"] ?? "🙂"} / 相手:{" "}
         {AVATAR_PRESETS[opponentPlayer?.userId ?? "cpu-normal"] ?? "🤖"}
@@ -256,8 +275,9 @@ export default function BattleScreen() {
             <Button
               title="成行で決済"
               onPress={async () => {
-                await closePosition(selectedMarker.positionId, currentPrice, Number(state?.turnNumber ?? 1));
-                setNotice("決済しました。");
+                const result = await closePosition(selectedMarker.positionId, currentPrice, Number(state?.turnNumber ?? 1));
+                const pnl = Number(result?.position?.realizedPnl ?? 0);
+                setNotice(`決済しました。損益=${pnl.toFixed(2)}`);
                 setSelectedMarker(null);
                 await refreshPositions();
               }}

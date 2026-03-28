@@ -69,3 +69,26 @@ export function closePosition(params: { positionId: string; closePrice: number; 
   }
   return null;
 }
+
+
+export function closeAllOpenPositions(matchId: string, closePrice: number, closeTurn: number) {
+  const list = positionsByMatch.get(matchId) ?? [];
+  return list
+    .filter((p) => p.status === "OPEN")
+    .map((p) => closePosition({ positionId: p.id, closePrice, closeTurn }))
+    .filter((p): p is TradePosition => Boolean(p));
+}
+
+export function calculatePnlBySide(matchId: string, sideByUserId: Map<string, Side>) {
+  const list = positionsByMatch.get(matchId) ?? [];
+  const totals: Record<Side, number> = { BUY: 0, SELL: 0 };
+
+  for (const p of list) {
+    if (typeof p.realizedPnl !== "number") continue;
+    const side = sideByUserId.get(p.userId);
+    if (!side) continue;
+    totals[side] += p.realizedPnl;
+  }
+
+  return totals;
+}

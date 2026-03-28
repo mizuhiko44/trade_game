@@ -64,11 +64,17 @@ export default function CandlestickChart({ turns, executions = [], onExecutionPr
   return (
     <View style={{ gap: 8 }}>
       <Text style={{ fontWeight: "700" }}>ローソク足チャート</Text>
-      <Pressable
-        onPress={handleChartPress}
-        style={{ height: CHART_HEIGHT + 8, borderWidth: 1, borderRadius: 8, padding: 8 }}
-      >
-        <View style={{ height: CHART_HEIGHT, position: "relative" }}>
+      <View style={{ flexDirection: "row", alignItems: "stretch" }}>
+        <View style={{ width: 42, justifyContent: "space-between", paddingRight: 4 }}>
+          <Text style={{ fontSize: 10, color: "#475569", textAlign: "right" }}>{maxPrice.toFixed(2)}</Text>
+          <Text style={{ fontSize: 10, color: "#475569", textAlign: "right" }}>{((maxPrice + minPrice) / 2).toFixed(2)}</Text>
+          <Text style={{ fontSize: 10, color: "#475569", textAlign: "right" }}>{minPrice.toFixed(2)}</Text>
+        </View>
+        <Pressable
+          onPress={handleChartPress}
+          style={{ flex: 1, height: CHART_HEIGHT + 8, borderWidth: 1, borderRadius: 8, padding: 8 }}
+        >
+          <View style={{ height: CHART_HEIGHT, position: "relative" }}>
           {crosshairY !== null ? (
             <View
               pointerEvents="none"
@@ -168,8 +174,9 @@ export default function CandlestickChart({ turns, executions = [], onExecutionPr
               );
             })}
           </View>
-        </View>
-      </Pressable>
+          </View>
+        </Pressable>
+      </View>
       <Text style={{ fontSize: 12, color: "#666" }}>
         High: {maxPrice.toFixed(2)} / Low: {minPrice.toFixed(2)}
       </Text>
