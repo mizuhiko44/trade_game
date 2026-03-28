@@ -51,6 +51,20 @@ export async function fetchMatch(matchId: string) {
   return parseJsonOrThrow(res);
 }
 
+export async function fetchPositions(matchId: string, userId = USER_ID) {
+  const res = await fetch(`${API_BASE_URL}/matches/${matchId}/positions?userId=${userId}`);
+  return parseJsonOrThrow(res);
+}
+
+export async function closePosition(positionId: string, closePrice: number, closeTurn: number) {
+  const res = await fetch(`${API_BASE_URL}/positions/${positionId}/close`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ closePrice, closeTurn })
+  });
+  return parseJsonOrThrow(res);
+}
+
 export async function fetchDebugMessages() {
   const res = await fetch(`${API_BASE_URL}/debug/messages?limit=20`);
   return parseJsonOrThrow(res);

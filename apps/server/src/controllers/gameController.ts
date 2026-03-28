@@ -3,6 +3,7 @@ import { z } from "zod";
 import { claimLoginBonus, getMatch, getUserHome, resolveTurn, startCpuMatch } from "../services/gameService";
 import { addDebugMessage, clearDebugMessages, listDebugMessages } from "../services/debugService";
 import { enqueuePvp, getPvpTicket, getRanking } from "../services/pvpService";
+import { closePosition, listPositions } from "../services/positionService";
 
 const startMatchSchema = z.object({
   userId: z.string(),
@@ -120,6 +121,31 @@ export async function rankings(req: Request, res: Response, next: NextFunction) 
     const limit = z.coerce.number().int().min(1).max(100).parse(req.query.limit ?? 20);
     const ranking = await getRanking(limit);
     res.json({ ranking });
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function positions(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+    const items = listPositions(req.params.matchId, userId);
+    res.json({ positions: items });
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function closeMarketPosition(req: Request, res: Response, next: NextFunction) {
+  try {
+    const parsed = z.object({ closePrice: z.number(), closeTurn: z.number().int() }).parse(req.body);
+    const position = closePosition({
+      positionId: req.params.positionId,
+      closePrice: parsed.closePrice,
+      closeTurn: parsed.closeTurn
+    });
+    if (!position) return res.status(404).json({ code: "NOT_FOUND", message: "position not found" });
+    res.json({ position });
   } catch (e) {
     next(e);
   }

@@ -56,6 +56,8 @@
 - 仕様:
   - OHLCからwick/body描画
   - execution marker表示（B/S）
+  - markerタップでポジション詳細ポップアップ表示
+  - OPEN + MARKET の場合は決済ボタン表示
 - 改修ポイント:
   - 色テーマ
   - 横スクロール対応

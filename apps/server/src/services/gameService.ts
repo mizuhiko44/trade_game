@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { GAME_CONFIG, REWARDS } from "../config/gameConfig";
 import { auditLog } from "./auditLogService";
+import { createPosition } from "./positionService";
 import { ResolveTurnInput, StartCpuMatchInput } from "../types/game";
 
 const prisma = new PrismaClient();
@@ -203,6 +204,18 @@ export async function resolveTurn(input: ResolveTurnInput) {
       }
     }
   });
+
+  if (input.action.actionType === ActionType.BUY || input.action.actionType === ActionType.SELL) {
+    createPosition({
+      matchId: match.id,
+      userId: player.userId,
+      side: input.action.actionType === ActionType.BUY ? Side.BUY : Side.SELL,
+      orderType: "MARKET",
+      entryPrice: Number(turn.closePrice),
+      quantity: Math.max(1, playerEffectiveAmount),
+      entryTurn: match.turnNumber
+    });
+  }
 
   let status: MatchStatus = MatchStatus.ACTIVE;
   let winnerSide: Side | null = null;

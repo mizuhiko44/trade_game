@@ -1,4 +1,4 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 type TurnCandle = {
   id: string;
@@ -16,7 +16,19 @@ type Props = {
     turnNumber: number;
     price: number;
     side: "BUY" | "SELL";
+    status?: "OPEN" | "CLOSED";
+    positionId?: string;
+    orderType?: "MARKET" | "LIMIT";
   }>;
+  onExecutionPress?: (execution: {
+    id: string;
+    turnNumber: number;
+    price: number;
+    side: "BUY" | "SELL";
+    status?: "OPEN" | "CLOSED";
+    positionId?: string;
+    orderType?: "MARKET" | "LIMIT";
+  }) => void;
 };
 
 const CHART_HEIGHT = 170;
@@ -25,7 +37,7 @@ function toNum(v: string | number) {
   return typeof v === "string" ? Number(v) : v;
 }
 
-export default function CandlestickChart({ turns, executions = [] }: Props) {
+export default function CandlestickChart({ turns, executions = [], onExecutionPress }: Props) {
   if (!turns.length) {
     return <Text>まだローソク足データはありません（最初の行動後に表示）</Text>;
   }
@@ -92,8 +104,9 @@ export default function CandlestickChart({ turns, executions = [] }: Props) {
                     const markerY = y(e.price);
                     const markerColor = e.side === "BUY" ? "#2563eb" : "#7c3aed";
                     return (
-                      <View
+                      <Pressable
                         key={e.id}
+                        onPress={() => onExecutionPress?.(e)}
                         style={{
                           position: "absolute",
                           top: markerY,
@@ -111,7 +124,7 @@ export default function CandlestickChart({ turns, executions = [] }: Props) {
                           }}
                         />
                         <Text style={{ fontSize: 8, color: markerColor }}>{e.side === "BUY" ? "B" : "S"}</Text>
-                      </View>
+                      </Pressable>
                     );
                   })}
               </View>

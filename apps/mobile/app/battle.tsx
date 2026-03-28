@@ -2,10 +2,21 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Text, TextInput, View } from "react-native";
 import CandlestickChart from "../components/CandlestickChart";
-import { sendAction } from "../services/api";
+import { closePosition, fetchPositions, sendAction } from "../services/api";
 
 type TradeAction = "BUY" | "SELL" | "HOLD" | "SETTLE";
 type OrderType = "MARKET" | "LIMIT";
+type Position = {
+  id: string;
+  positionId?: string;
+  entryTurn: number;
+  exitTurn?: number;
+  entryPrice: number | string;
+  exitPrice?: number | string;
+  side: "BUY" | "SELL" | string;
+  status: "OPEN" | "CLOSED" | string;
+  orderType: "MARKET" | "LIMIT" | string;
+};
 
 const AVATAR_PRESETS: Record<string, string> = {
   "demo-user": "🧑‍💼",
@@ -45,9 +56,8 @@ export default function BattleScreen() {
   const [turnInfo, setTurnInfo] = useState<string>("あなたのターン");
   const [isUserTurn, setIsUserTurn] = useState(true);
   const [remainingSec, setRemainingSec] = useState(60);
-  const [executions, setExecutions] = useState<
-    Array<{ id: string; turnNumber: number; price: number; side: "BUY" | "SELL" }>
-  >([]);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
 
   const chartData = useMemo(
     () => [...CHART_PRESETS[assetType], ...((state?.turns as any[]) ?? [])],
@@ -57,6 +67,12 @@ export default function BattleScreen() {
   const currentPrice = Number(state?.currentPrice ?? 100);
   const selfPlayer = state?.players?.find((p: any) => p.userId === "demo-user");
   const opponentPlayer = state?.players?.find((p: any) => p.userId !== "demo-user");
+
+  async function refreshPositions() {
+    if (!matchId) return;
+    const data = await fetchPositions(matchId);
+    setPositions((data.positions ?? []) as Position[]);
+  }
 
   async function action(type: TradeAction, source: "USER" | "AUTO" = "USER") {
     if (!matchId) return;
@@ -85,17 +101,7 @@ export default function BattleScreen() {
 
       const data = await sendAction(matchId, type, type === "HOLD" ? 0 : amount);
       setState(data.match);
-      if ((type === "BUY" || type === "SELL") && data.turn) {
-        setExecutions((prev) => [
-          ...prev,
-          {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            turnNumber: data.turn.turnNumber,
-            price: Number(data.turn.closePrice),
-            side: type
-          }
-        ]);
-      }
+      await refreshPositions();
       setRemainingSec(60);
       setIsUserTurn(false);
       setTimeout(() => setIsUserTurn(true), 5000);
@@ -116,10 +122,16 @@ export default function BattleScreen() {
       setError(null);
       const data = await sendAction(matchId, "ITEM", 0, itemType);
       setState(data.match);
+      await refreshPositions();
     } catch (e) {
       setError((e as Error).message);
     }
   }
+
+  useEffect(() => {
+    if (!matchId) return;
+    void refreshPositions();
+  }, [matchId]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -145,6 +157,24 @@ export default function BattleScreen() {
       setTurnInfo("相手ターン...");
     }
   }, [isUserTurn, remainingSec]);
+
+  const executionMarkers: Array<{
+    id: string;
+    positionId: string;
+    turnNumber: number;
+    price: number;
+    side: "BUY" | "SELL";
+    status: "OPEN" | "CLOSED";
+    orderType: "MARKET" | "LIMIT";
+  }> = positions.map((p) => ({
+    id: String(p.id),
+    positionId: String(p.id),
+    turnNumber: Number(p.status === "OPEN" ? p.entryTurn : p.exitTurn ?? p.entryTurn),
+    price: Number(p.status === "OPEN" ? p.entryPrice : p.exitPrice ?? p.entryPrice),
+    side: p.side === "BUY" ? "BUY" : "SELL",
+    status: p.status === "CLOSED" ? "CLOSED" : "OPEN",
+    orderType: p.orderType === "LIMIT" ? "LIMIT" : "MARKET"
+  }));
 
   return (
     <View style={{ flex: 1, gap: 10, padding: 20 }}>
@@ -187,7 +217,28 @@ export default function BattleScreen() {
           style={{ borderWidth: 1, borderRadius: 8, padding: 8 }}
         />
       ) : null}
-      <CandlestickChart turns={chartData} executions={executions} />
+      <CandlestickChart turns={chartData} executions={executionMarkers} onExecutionPress={setSelectedMarker} />
+      {selectedMarker ? (
+        <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 4 }}>
+          <Text style={{ fontWeight: "700" }}>約定マーカー詳細</Text>
+          <Text>サイド: {selectedMarker.side}</Text>
+          <Text>価格: {Number(selectedMarker.price).toFixed(2)}</Text>
+          <Text>状態: {selectedMarker.status}</Text>
+          <Text>注文: {selectedMarker.orderType}</Text>
+          {selectedMarker.status === "OPEN" && selectedMarker.orderType === "MARKET" ? (
+            <Button
+              title="成行で決済"
+              onPress={async () => {
+                await closePosition(selectedMarker.positionId, currentPrice, Number(state?.turnNumber ?? 1));
+                setNotice("決済しました。");
+                setSelectedMarker(null);
+                await refreshPositions();
+              }}
+            />
+          ) : null}
+          <Button title="閉じる" onPress={() => setSelectedMarker(null)} />
+        </View>
+      ) : null}
       <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
       <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
       <Button title="Hold" onPress={() => action("HOLD")} />
