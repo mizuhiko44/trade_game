@@ -166,12 +166,22 @@ export async function resolveTurn(input: ResolveTurnInput) {
     (input.action.actionType === ActionType.SELL ? playerEffectiveAmount : 0) +
     (botMove.actionType === ActionType.SELL ? cpuEffectiveAmount : 0);
 
+  const impactByAction = (actionType: ActionType, amount: number) => {
+    if (actionType === ActionType.BUY) return amount * GAME_CONFIG.basePriceImpactFactor;
+    if (actionType === ActionType.SELL) return -amount * GAME_CONFIG.basePriceImpactFactor;
+    return 0;
+  };
+
   const open = Number(match.currentPrice);
-  const rawDelta = (buyTotal - sellTotal) * GAME_CONFIG.basePriceImpactFactor;
-  let close = Math.max(GAME_CONFIG.minimumPrice, open + rawDelta);
+  const playerDelta = impactByAction(input.action.actionType, playerEffectiveAmount);
+  const cpuDelta = impactByAction(botMove.actionType, cpuEffectiveAmount);
+
+  const afterPlayer = Math.max(GAME_CONFIG.minimumPrice, open + playerDelta);
+  let close = Math.max(GAME_CONFIG.minimumPrice, afterPlayer + cpuDelta);
   close = applyItemPrice(input.action.itemType, close, player.side);
-  const high = Math.max(open, close);
-  const low = Math.min(open, close);
+
+  const high = Math.max(open, afterPlayer, close);
+  const low = Math.min(open, afterPlayer, close);
 
   if (input.action.actionType === ActionType.ITEM && input.action.itemType === ItemType.SHIELD) {
     effectState.shieldUntilTurn[player.side] = match.turnNumber + 1;

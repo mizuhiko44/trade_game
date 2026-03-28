@@ -7,6 +7,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [startingMatch, setStartingMatch] = useState(false);
 
   async function load() {
     try {
@@ -37,10 +38,19 @@ export default function HomeScreen() {
         }}
       />
       <Button
-        title="CPU戦開始 (Normal)"
+        title={startingMatch ? "対戦準備中..." : "CPU戦開始 (Normal)"}
+        disabled={startingMatch}
         onPress={async () => {
-          const data = await startCpuMatch("NORMAL");
-          router.push({ pathname: "/battle", params: { matchId: data.match.id } });
+          try {
+            setError(null);
+            setStartingMatch(true);
+            const data = await startCpuMatch("NORMAL");
+            router.push({ pathname: "/battle", params: { matchId: data.match.id } });
+          } catch (e) {
+            setError((e as Error).message);
+          } finally {
+            setStartingMatch(false);
+          }
         }}
       />
       <Button title="デバッグ受信画面へ" onPress={() => router.push("/debug")} />
