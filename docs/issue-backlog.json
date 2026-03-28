@@ -1,0 +1,69 @@
+[
+  {
+    "id": "TG-001",
+    "title": "WebSocketリアルタイム同期（PvP/観戦）",
+    "priority": "P0",
+    "importance": "High",
+    "labels": [
+      "phase-c",
+      "priority:P0",
+      "importance:high",
+      "area:server"
+    ],
+    "body": "## Goal\nPvP対戦でターンイベントをリアルタイム配信する。\n\n## Acceptance Criteria\n- WebSocket接続で対戦イベント（price/turn/status）配信\n- 再接続時の最新状態同期\n- 接続切断時のフォールバック挙動が定義される"
+  },
+  {
+    "id": "TG-002",
+    "title": "PvPキュー永続化（Redis/DB）",
+    "priority": "P0",
+    "importance": "High",
+    "labels": [
+      "phase-c",
+      "priority:P0",
+      "importance:high",
+      "area:server"
+    ],
+    "body": "## Goal\nインメモリのPvPキューを永続化し、再起動・スケール時にも維持可能にする。\n\n## Acceptance Criteria\n- RedisまたはDBでキューを保持\n- サーバ再起動後も待機状態が維持\n- 同時参加時の重複マッチ防止"
+  },
+  {
+    "id": "TG-003",
+    "title": "指値/成行/決済のサーバ権威化",
+    "priority": "P0",
+    "importance": "High",
+    "labels": [
+      "phase-c",
+      "priority:P0",
+      "importance:high",
+      "area:server",
+      "area:mobile"
+    ],
+    "body": "## Goal\n注文判定をクライアント依存からサーバ権威へ移行し、改ざん耐性を上げる。\n\n## Acceptance Criteria\n- APIで orderType/limitPrice/settlement を正式受理\n- 約定判定をサーバ実装\n- クライアントは表示/入力のみに限定"
+  },
+  {
+    "id": "TG-004",
+    "title": "API統合テスト（home/cpu/actions/pvp）",
+    "priority": "P1",
+    "importance": "High",
+    "labels": [
+      "phase-a",
+      "priority:P1",
+      "importance:high",
+      "area:ci"
+    ],
+    "body": "## Goal\n主要APIの回帰を自動検知する。\n\n## Acceptance Criteria\n- home, matches/cpu, actions, pvp queue の統合テスト\n- CIで自動実行\n- 失敗時の原因特定ログを出力"
+  },
+  {
+    "id": "TG-010",
+    "title": "接続先自己診断フロー（環境別接続テスト/ガイド）",
+    "priority": "P1",
+    "importance": "Medium",
+    "labels": [
+      "phase-b",
+      "priority:P1",
+      "importance:medium",
+      "area:mobile",
+      "area:docs"
+    ],
+    "body": "## Goal\n実行環境（Androidエミュレータ / iOSシミュレータ / 実機）ごとに接続先判定を自己診断し、初回起動時に接続ガイドを提示する。\n\n## Acceptance Criteria\n- アプリ内に接続テスト（/health ping）を実装\n- 失敗時に環境別の修正手順を表示\n- 診断結果をDebug画面またはログに保存して共有可能"
+  }
+]
