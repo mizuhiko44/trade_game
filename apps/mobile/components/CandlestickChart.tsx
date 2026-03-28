@@ -103,27 +103,35 @@ export default function CandlestickChart({ turns, executions = [], onExecutionPr
                   .map((e) => {
                     const markerY = y(e.price);
                     const markerColor = e.side === "BUY" ? "#2563eb" : "#7c3aed";
+                    const markerTop = Math.min(Math.max(markerY - 8, 0), CHART_HEIGHT - 20);
                     return (
                       <Pressable
                         key={e.id}
                         onPress={() => onExecutionPress?.(e)}
+                        hitSlop={10}
                         style={{
                           position: "absolute",
-                          top: markerY,
+                          top: markerTop,
                           left: 0,
                           width: 18,
-                          alignItems: "center"
+                          height: 20,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          zIndex: 20,
+                          elevation: 2
                         }}
                       >
                         <View
                           style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: 3,
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
                             backgroundColor: markerColor
                           }}
                         />
-                        <Text style={{ fontSize: 8, color: markerColor }}>{e.side === "BUY" ? "B" : "S"}</Text>
+                        <Text style={{ fontSize: 8, color: markerColor, fontWeight: "700" }}>
+                          {e.side === "BUY" ? "B" : "S"}
+                        </Text>
                       </Pressable>
                     );
                   })}
