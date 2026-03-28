@@ -73,11 +73,8 @@ export default function BattleScreen() {
   const selfPlayer = state?.players?.find((p: any) => p.userId === "demo-user");
   const opponentPlayer = state?.players?.find((p: any) => p.userId !== "demo-user");
 
-  const openExposure = positions
-    .filter((p) => p.status === "OPEN" && p.userId === "demo-user")
-    .reduce((sum, p) => sum + Number(p.quantity ?? 0), 0);
-  const availableCash = Math.max(0, Number(selfPlayer?.cash ?? 1000) - openExposure);
-  const maxLot = Math.max(50, Math.floor(availableCash / 50) * 50 || 50);
+  const avatarLevelBonus = 0; // 将来: アバターレベルに応じて加算
+  const maxLot = 1000 + avatarLevelBonus;
   const lotOptions = useMemo(() => {
     const values: number[] = [];
     for (let lot = 50; lot <= maxLot; lot += 50) values.push(lot);
@@ -145,12 +142,6 @@ export default function BattleScreen() {
       setRemainingSec(60);
       setIsUserTurn(false);
       setTimeout(() => setIsUserTurn(true), 5000);
-      if (data.match.status === "FINISHED") {
-        router.push({
-          pathname: "/result",
-          params: { winnerSide: data.match.winnerSide, price: data.match.currentPrice, matchId: data.match.id }
-        });
-      }
     } catch (e) {
       setError((e as Error).message);
     }
@@ -216,6 +207,7 @@ export default function BattleScreen() {
     orderType: p.orderType === "LIMIT" ? "LIMIT" : "MARKET"
   }));
 
+
   const pnlBySide = positions.reduce(
     (acc, p) => {
       if (typeof p.realizedPnl !== "number") return acc;
@@ -226,6 +218,18 @@ export default function BattleScreen() {
     { BUY: 0, SELL: 0 }
   );
 
+  const selfSide: "BUY" | "SELL" = selfPlayer?.side === "SELL" ? "SELL" : "BUY";
+  const opponentSide: "BUY" | "SELL" = selfSide === "BUY" ? "SELL" : "BUY";
+  const selfPnl = pnlBySide[selfSide];
+  const opponentPnl = pnlBySide[opponentSide];
+  const selfResultLabel =
+    state?.status === "FINISHED"
+      ? selfPnl === opponentPnl
+        ? "DRAW"
+        : selfPnl > opponentPnl
+          ? "WIN"
+          : "LOSE"
+      : "";
 
   function calcPositionPnl(p: Position) {
     const entry = Number(p.entryPrice);
@@ -255,14 +259,6 @@ export default function BattleScreen() {
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
       <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
-      <View style={{ borderWidth: 1, borderRadius: 8, padding: 8, gap: 2, borderColor: "#cbd5e1" }}>
-        <Text style={{ fontSize: 12, color: "#64748b" }}>autoStart: {String(autoStart ?? "-")}</Text>
-        <Text style={{ fontSize: 12, color: "#64748b" }}>param matchId: {String(matchId ?? "-")}</Text>
-        <Text style={{ fontSize: 12, color: "#64748b" }}>state matchId: {String(state?.id ?? "-")}</Text>
-        {startLog.map((line) => (
-          <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
-        ))}
-      </View>
       <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
       <Text>ターン: {state?.turnNumber ?? 1}</Text>
@@ -289,8 +285,8 @@ export default function BattleScreen() {
         </Text>
       ) : null}
       <Text>
-        自分: {AVATAR_PRESETS[selfPlayer?.userId ?? "demo-user"] ?? "🙂"} / 相手:{" "}
-        {AVATAR_PRESETS[opponentPlayer?.userId ?? "cpu-normal"] ?? "🤖"} / 目標: 上110・下90
+        自分: {AVATAR_PRESETS[selfPlayer?.userId ?? "demo-user"] ?? "🙂"} 損益={selfPnl.toFixed(2)} {selfResultLabel} / 相手:{" "}
+        {AVATAR_PRESETS[opponentPlayer?.userId ?? "cpu-normal"] ?? "🤖"} 損益={opponentPnl.toFixed(2)} / 目標: 上110・下90
       </Text>
       <CandlestickChart
         turns={chartData}
@@ -364,6 +360,12 @@ export default function BattleScreen() {
         <Text style={{ fontSize: 12, color: "#64748b" }}>API: {API_BASE_URL}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>API Source: {API_BASE_URL_SOURCE}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>UI Revision: {UI_REVISION}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>autoStart: {String(autoStart ?? "-")}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>param matchId: {String(matchId ?? "-")}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>state matchId: {String(state?.id ?? "-")}</Text>
+        {startLog.map((line) => (
+          <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
+        ))}
       </View>
     </ScrollView>
   );
