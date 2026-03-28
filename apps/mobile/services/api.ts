@@ -25,8 +25,14 @@ async function requestJson(path: string, init?: RequestInit) {
   const traceId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const url = `${API_BASE_URL}${path}`;
   apiLog(`${traceId} -> ${init?.method ?? "GET"} ${url}`, init?.body ? { body: init.body } : undefined);
-  const res = await fetch(url, init);
-  return parseJsonOrThrow(res, traceId);
+  try {
+    const res = await fetch(url, init);
+    return parseJsonOrThrow(res, traceId);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    apiLog(`${traceId} !! network_error`, { message, url });
+    throw new Error(`NETWORK_ERROR: ${message} (url=${url})`);
+  }
 }
 
 export async function fetchHome() {

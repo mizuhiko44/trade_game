@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Button, Text, View } from "react-native";
 import { claimBonus, fetchHome } from "../services/api";
+import { API_BASE_URL, API_BASE_URL_SOURCE } from "../constants/config";
 
 const UI_REVISION = "mobile-ui-r7";
 
@@ -36,6 +37,9 @@ export default function HomeScreen() {
     <View style={{ flex: 1, gap: 12, padding: 20 }}>
       <Text style={{ fontSize: 24, fontWeight: "700" }}>Trade Game MVP</Text>
       <Text style={{ fontSize: 12, color: "#64748b" }}>UI Revision: {UI_REVISION}</Text>
+      <Text style={{ fontSize: 12, color: "#64748b" }}>API: {API_BASE_URL}</Text>
+      <Text style={{ fontSize: 12, color: "#64748b" }}>API Source: {API_BASE_URL_SOURCE}</Text>
+
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
       <Text>ユーザー: {user?.name ?? "-"}</Text>
       <Text>アバター: {user?.avatarId ?? "-"}</Text>

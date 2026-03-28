@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, ScrollView, Text, View } from "react-native";
 import CandlestickChart from "../components/CandlestickChart";
+import { API_BASE_URL, API_BASE_URL_SOURCE } from "../constants/config";
 import { closePosition, fetchPositions, sendAction, startCpuMatch } from "../services/api";
 
 type TradeAction = "BUY" | "SELL" | "HOLD" | "SETTLE";
@@ -207,6 +208,8 @@ export default function BattleScreen() {
         <Text style={{ fontSize: 12, color: "#64748b" }}>autoStart: {String(autoStart ?? "-")}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>param matchId: {String(matchId ?? "-")}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>state matchId: {String(state?.id ?? "-")}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>API: {API_BASE_URL}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>API Source: {API_BASE_URL_SOURCE}</Text>
         {startLog.map((line) => (
           <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
         ))}
