@@ -226,6 +226,29 @@ export default function BattleScreen() {
     { BUY: 0, SELL: 0 }
   );
 
+
+  function calcPositionPnl(p: Position) {
+    const entry = Number(p.entryPrice);
+    const qty = Number(p.quantity ?? 0);
+    const mark = p.status === "OPEN" ? currentPrice : Number(p.exitPrice ?? currentPrice);
+    const direction = p.side === "BUY" ? 1 : -1;
+    return (mark - entry) * direction * qty;
+  }
+
+  async function settlePosition(positionId: string) {
+    await closePosition(positionId, currentPrice, Number(state?.turnNumber ?? 1));
+    await refreshPositions();
+  }
+
+  async function settleAllOpenPositions() {
+    const openPositions = positions.filter((p) => p.status === "OPEN");
+    for (const p of openPositions) {
+      await closePosition(String(p.id), currentPrice, Number(state?.turnNumber ?? 1));
+    }
+    setNotice(`オール決済しました（${openPositions.length}件）`);
+    await refreshPositions();
+  }
+
   return (
     <ScrollView contentContainerStyle={{ gap: 10, padding: 20 }} style={{ flex: 1 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>対戦画面</Text>
@@ -233,7 +256,6 @@ export default function BattleScreen() {
       <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
       <View style={{ borderWidth: 1, borderRadius: 8, padding: 8, gap: 2, borderColor: "#cbd5e1" }}>
-        <Text style={{ fontSize: 12, color: "#64748b" }}>UI Revision: {UI_REVISION}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>autoStart: {String(autoStart ?? "-")}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>param matchId: {String(matchId ?? "-")}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>state matchId: {String(state?.id ?? "-")}</Text>
@@ -245,7 +267,6 @@ export default function BattleScreen() {
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
       <Text>ターン: {state?.turnNumber ?? 1}</Text>
       <Text>ローソク足内バトル: {Number(state?.subturn ?? 1)}/3</Text>
-      <Text>目標価格: 上110 / 下90</Text>
       <Text>ロット選択（最大 {maxLot}）</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator style={{ maxHeight: 44 }}>
         <View style={{ flexDirection: "row", gap: 8 }}>
@@ -255,6 +276,13 @@ export default function BattleScreen() {
         </View>
       </ScrollView>
       <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+        <Button title="⚡Price" onPress={() => useItem("PRICE_SPIKE")} />
+        <Button title="🛡Shield" onPress={() => useItem("SHIELD")} />
+        <Button title="💥Force" onPress={() => useItem("DOUBLE_FORCE")} />
+        <Button title="🧹オール決済" onPress={settleAllOpenPositions} />
+      </View>
+
       {state?.status === "FINISHED" ? (
         <Text style={{ fontWeight: "700" }}>
           損益勝者: {pnlBySide.BUY === pnlBySide.SELL ? "DRAW" : pnlBySide.BUY > pnlBySide.SELL ? "BUY" : "SELL"}
@@ -262,7 +290,7 @@ export default function BattleScreen() {
       ) : null}
       <Text>
         自分: {AVATAR_PRESETS[selfPlayer?.userId ?? "demo-user"] ?? "🙂"} / 相手:{" "}
-        {AVATAR_PRESETS[opponentPlayer?.userId ?? "cpu-normal"] ?? "🤖"}
+        {AVATAR_PRESETS[opponentPlayer?.userId ?? "cpu-normal"] ?? "🤖"} / 目標: 上110・下90
       </Text>
       <CandlestickChart
         turns={chartData}
@@ -309,22 +337,33 @@ export default function BattleScreen() {
           <Button title="閉じる" onPress={() => setSelectedMarker(null)} />
         </View>
       ) : null}
-      <Button
-        title="Item: Price Spike"
-        onPress={() => useItem("PRICE_SPIKE")}
-      />
-      <Button
-        title="Item: Shield"
-        onPress={() => useItem("SHIELD")}
-      />
-      <Button
-        title="Item: Double Force"
-        onPress={() => useItem("DOUBLE_FORCE")}
-      />
-      <Button title="決済" onPress={() => action("SETTLE")} />
+      <View style={{ borderWidth: 1, borderRadius: 8, padding: 8, gap: 6 }}>
+        <Text style={{ fontWeight: "700" }}>約定一覧</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text style={{ width: 50 }}>Side</Text>
+          <Text style={{ width: 80 }}>価格</Text>
+          <Text style={{ width: 90 }}>利益</Text>
+          <Text style={{ width: 80 }}>決済</Text>
+        </View>
+        {positions.map((p) => (
+          <View key={String(p.id)} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ width: 50 }}>{p.side}</Text>
+            <Text style={{ width: 80 }}>{Number(p.entryPrice).toFixed(2)}</Text>
+            <Text style={{ width: 90 }}>{calcPositionPnl(p).toFixed(2)}</Text>
+            {p.status === "OPEN" ? (
+              <View style={{ width: 80 }}>
+                <Button title="決済" onPress={() => settlePosition(String(p.id))} />
+              </View>
+            ) : (
+              <Text style={{ width: 80 }}>済</Text>
+            )}
+          </View>
+        ))}
+      </View>
       <View style={{ borderTopWidth: 1, borderColor: "#cbd5e1", paddingTop: 8, marginTop: 8 }}>
         <Text style={{ fontSize: 12, color: "#64748b" }}>API: {API_BASE_URL}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>API Source: {API_BASE_URL_SOURCE}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>UI Revision: {UI_REVISION}</Text>
       </View>
     </ScrollView>
   );
