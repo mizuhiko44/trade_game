@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Text, TextInput, View } from "react-native";
 import CandlestickChart from "../components/CandlestickChart";
-import { closePosition, fetchPositions, sendAction } from "../services/api";
+import { closePosition, fetchPositions, sendAction, startCpuMatch } from "../services/api";
 
 type TradeAction = "BUY" | "SELL" | "HOLD" | "SETTLE";
 type OrderType = "MARKET" | "LIMIT";
@@ -45,7 +45,7 @@ const CHART_PRESETS = {
 
 export default function BattleScreen() {
   const router = useRouter();
-  const { matchId } = useLocalSearchParams<{ matchId: string }>();
+  const { matchId, autoStart, botLevel } = useLocalSearchParams<{ matchId?: string; autoStart?: string; botLevel?: "EASY" | "NORMAL" | "HARD" }>();
   const [state, setState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [amount] = useState(100);
@@ -68,6 +68,26 @@ export default function BattleScreen() {
   const currentPrice = Number(state?.currentPrice ?? 100);
   const selfPlayer = state?.players?.find((p: any) => p.userId === "demo-user");
   const opponentPlayer = state?.players?.find((p: any) => p.userId !== "demo-user");
+
+
+  useEffect(() => {
+    if (matchId || autoStart !== "1") return;
+    let active = true;
+    void (async () => {
+      try {
+        setNotice("対戦を開始しています...");
+        const data = await startCpuMatch(botLevel ?? "NORMAL");
+        if (!active) return;
+        router.replace({ pathname: "/battle", params: { matchId: data.match.id } });
+      } catch (e) {
+        if (!active) return;
+        setError((e as Error).message);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [autoStart, botLevel, matchId, router]);
 
   async function refreshPositions() {
     if (!matchId) return;

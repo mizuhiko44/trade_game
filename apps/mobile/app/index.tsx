@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Button, Text, View } from "react-native";
-import { claimBonus, fetchHome, startCpuMatch } from "../services/api";
+import { claimBonus, fetchHome } from "../services/api";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -41,16 +41,10 @@ export default function HomeScreen() {
         title={startingMatch ? "対戦準備中..." : "CPU戦開始 (Normal)"}
         disabled={startingMatch}
         onPress={async () => {
-          try {
-            setError(null);
-            setStartingMatch(true);
-            const data = await startCpuMatch("NORMAL");
-            router.push({ pathname: "/battle", params: { matchId: data.match.id } });
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setStartingMatch(false);
-          }
+          setError(null);
+          setStartingMatch(true);
+          router.push({ pathname: "/battle", params: { autoStart: "1", botLevel: "NORMAL" } });
+          setStartingMatch(false);
         }}
       />
       <Button title="デバッグ受信画面へ" onPress={() => router.push("/debug")} />
