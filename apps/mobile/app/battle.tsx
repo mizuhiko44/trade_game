@@ -48,16 +48,17 @@ export default function BattleScreen() {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const [state, setState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState(100);
+  const [amount] = useState(100);
   const [orderType, setOrderType] = useState<OrderType>("MARKET");
   const [limitPrice, setLimitPrice] = useState("100");
-  const [assetType, setAssetType] = useState<keyof typeof CHART_PRESETS>("USDJPY");
+  const assetType: keyof typeof CHART_PRESETS = "USDJPY";
   const [notice, setNotice] = useState<string | null>(null);
   const [turnInfo, setTurnInfo] = useState<string>("あなたのターン");
   const [isUserTurn, setIsUserTurn] = useState(true);
   const [remainingSec, setRemainingSec] = useState(60);
   const [positions, setPositions] = useState<Position[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
+  const [chartTapPrice, setChartTapPrice] = useState<number | null>(null);
 
   const chartData = useMemo(
     () => [...CHART_PRESETS[assetType], ...((state?.turns as any[]) ?? [])],
@@ -190,19 +191,6 @@ export default function BattleScreen() {
         自分: {AVATAR_PRESETS[selfPlayer?.userId ?? "demo-user"] ?? "🙂"} / 相手:{" "}
         {AVATAR_PRESETS[opponentPlayer?.userId ?? "cpu-normal"] ?? "🤖"}
       </Text>
-      <Text>チャート種別</Text>
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Button title="ドル円" onPress={() => setAssetType("USDJPY")} />
-        <Button title="株" onPress={() => setAssetType("STOCK")} />
-        <Button title="債券" onPress={() => setAssetType("BOND")} />
-      </View>
-      <Text>投入金額: {amount}</Text>
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Button title="50" onPress={() => setAmount(50)} />
-        <Button title="100" onPress={() => setAmount(100)} />
-        <Button title="200" onPress={() => setAmount(200)} />
-        <Button title="300" onPress={() => setAmount(300)} />
-      </View>
       <Text>注文方式</Text>
       <View style={{ flexDirection: "row", gap: 8 }}>
         <Button title="成行" onPress={() => setOrderType("MARKET")} />
@@ -217,7 +205,29 @@ export default function BattleScreen() {
           style={{ borderWidth: 1, borderRadius: 8, padding: 8 }}
         />
       ) : null}
-      <CandlestickChart turns={chartData} executions={executionMarkers} onExecutionPress={setSelectedMarker} />
+      <CandlestickChart
+        turns={chartData}
+        executions={executionMarkers}
+        onExecutionPress={(execution) => {
+          setSelectedMarker(execution);
+          setChartTapPrice(null);
+        }}
+        onChartPress={({ price }) => {
+          setChartTapPrice(price);
+          setSelectedMarker(null);
+        }}
+      />
+      {chartTapPrice !== null ? (
+        <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 6 }}>
+          <Text style={{ fontWeight: "700" }}>チャートタップ操作</Text>
+          <Text>タップ価格: {chartTapPrice.toFixed(2)}</Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
+            <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
+            <Button title="Hold" onPress={() => action("HOLD")} />
+          </View>
+        </View>
+      ) : null}
       {selectedMarker ? (
         <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 4 }}>
           <Text style={{ fontWeight: "700" }}>約定マーカー詳細</Text>
@@ -239,9 +249,6 @@ export default function BattleScreen() {
           <Button title="閉じる" onPress={() => setSelectedMarker(null)} />
         </View>
       ) : null}
-      <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
-      <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
-      <Button title="Hold" onPress={() => action("HOLD")} />
       <Button
         title="Item: Price Spike"
         onPress={() => useItem("PRICE_SPIKE")}
