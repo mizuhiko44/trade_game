@@ -1,6 +1,14 @@
+import { Platform } from "react-native";
 import { API_BASE_URL, USER_ID } from "../constants/config";
 
 const DEBUG_API_LOG = true;
+
+function rewriteLoopbackForAndroid(url: string) {
+  if (Platform.OS !== "android") return url;
+  return url
+    .replace("http://localhost:", "http://10.0.2.2:")
+    .replace("http://127.0.0.1:", "http://10.0.2.2:");
+}
 
 function apiLog(message: string, payload?: unknown) {
   if (!DEBUG_API_LOG) return;
@@ -23,7 +31,7 @@ async function parseJsonOrThrow(res: Response, traceId: string) {
 
 async function requestJson(path: string, init?: RequestInit) {
   const traceId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const url = `${API_BASE_URL}${path}`;
+  const url = rewriteLoopbackForAndroid(`${API_BASE_URL}${path}`);
   apiLog(`${traceId} -> ${init?.method ?? "GET"} ${url}`, init?.body ? { body: init.body } : undefined);
   try {
     const res = await fetch(url, init);
