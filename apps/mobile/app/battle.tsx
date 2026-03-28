@@ -42,6 +42,8 @@ const CHART_PRESETS = {
   ]
 } as const;
 
+const UI_REVISION = "battle-ui-r7";
+
 export default function BattleScreen() {
   const router = useRouter();
   const { matchId, autoStart, botLevel } = useLocalSearchParams<{ matchId?: string; autoStart?: string; botLevel?: "EASY" | "NORMAL" | "HARD" }>();
@@ -200,9 +202,15 @@ export default function BattleScreen() {
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
       <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
-      {startLog.map((line) => (
-        <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
-      ))}
+      <View style={{ borderWidth: 1, borderRadius: 8, padding: 8, gap: 2, borderColor: "#cbd5e1" }}>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>UI Revision: {UI_REVISION}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>autoStart: {String(autoStart ?? "-")}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>param matchId: {String(matchId ?? "-")}</Text>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>state matchId: {String(state?.id ?? "-")}</Text>
+        {startLog.map((line) => (
+          <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
+        ))}
+      </View>
       <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
       <Text>ターン: {state?.turnNumber ?? 1}</Text>
