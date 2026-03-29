@@ -1,6 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
-import { claimLoginBonus, getMatch, getUserHome, resolveTurn, startCpuMatch } from "../services/gameService";
+import {
+  claimLoginBonus,
+  getMatch,
+  getUserHome,
+  refillLifePointsForDebug,
+  resolveTurn,
+  startCpuMatch
+} from "../services/gameService";
 import { addDebugMessage, clearDebugMessages, listDebugMessages } from "../services/debugService";
 import { enqueuePvp, getPvpTicket, getRanking } from "../services/pvpService";
 import { closePosition, listPositions } from "../services/positionService";
@@ -91,6 +98,16 @@ export async function deleteDebugMessages(_req: Request, res: Response, next: Ne
   try {
     const result = clearDebugMessages();
     res.json(result);
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function refillDebugLifePoints(req: Request, res: Response, next: NextFunction) {
+  try {
+    const parsed = z.object({ amount: z.number().int().positive().max(9999).optional() }).parse(req.body ?? {});
+    const user = await refillLifePointsForDebug(req.params.userId, parsed.amount);
+    res.json({ user });
   } catch (e) {
     next(e);
   }

@@ -106,6 +106,15 @@ curl "http://localhost:4000/api/debug/messages?limit=20"
 curl -X DELETE "http://localhost:4000/api/debug/messages"
 ```
 
+### ライフポイント回復（デバッグ用）
+```bash
+curl -X POST "http://localhost:4000/api/debug/users/demo-user/life-points/refill" \
+  -H 'Content-Type: application/json' \
+  -d '{"amount":300}'
+```
+- `NODE_ENV=production` では利用できません。
+- `apps/server/.env` で `DEBUG_FREE_CPU_MATCH=true` にすると、ローカル検証時のCPU戦でライフポイントを消費しません。
+
 ## CI
 - GitHub Actions で Push / Pull Request 時に以下を自動実行します。
   - `apps/server`: `npm install` → `npm run typecheck` → `npm run build`

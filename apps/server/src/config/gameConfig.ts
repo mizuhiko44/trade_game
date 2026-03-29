@@ -7,6 +7,8 @@ export const GAME_CONFIG = {
   maxInvestmentPerTurn: 300,
   matchCostLifePoints: 30,
   loginBonusLifePoints: 150,
+  debugRefillLifePoints: 300,
+  debugMinLifePoints: 90,
   basePriceImpactFactor: 0.02,
   minimumPrice: 1
 } as const;

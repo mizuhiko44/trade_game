@@ -110,3 +110,11 @@ export async function clearDebugMessages() {
     method: "DELETE"
   });
 }
+
+export async function refillDebugLifePoints(amount = 300) {
+  return requestJson(`/debug/users/${USER_ID}/life-points/refill`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount })
+  });
+}

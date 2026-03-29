@@ -10,6 +10,7 @@ import {
   pvpQueueStatus,
   positions,
   postDebugMessage,
+  refillDebugLifePoints,
   rankings,
   closeMarketPosition,
   startCpu
@@ -31,5 +32,6 @@ router.get("/rankings", rankings);
 router.get("/debug/messages", requireDebugEnabled, getDebugMessages);
 router.post("/debug/messages", requireDebugEnabled, postDebugMessage);
 router.delete("/debug/messages", requireDebugEnabled, deleteDebugMessages);
+router.post("/debug/users/:userId/life-points/refill", requireDebugEnabled, refillDebugLifePoints);
 
 export default router;

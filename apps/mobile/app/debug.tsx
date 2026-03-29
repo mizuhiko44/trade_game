@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, ScrollView, Text, TextInput, View } from "react-native";
-import { clearDebugMessages, fetchDebugMessages, postDebugMessage } from "../services/api";
+import { clearDebugMessages, fetchDebugMessages, postDebugMessage, refillDebugLifePoints } from "../services/api";
 
 type DebugMessage = {
   id: string;
@@ -57,6 +57,13 @@ export default function DebugScreen() {
         title="メッセージを全削除"
         onPress={async () => {
           await clearDebugMessages();
+          await load();
+        }}
+      />
+      <Button
+        title="ライフポイントを回復（デバッグ）"
+        onPress={async () => {
+          await refillDebugLifePoints();
           await load();
         }}
       />

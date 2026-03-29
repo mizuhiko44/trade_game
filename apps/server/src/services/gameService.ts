@@ -55,7 +55,10 @@ export async function claimLoginBonus(userId: string) {
 export async function startCpuMatch(input: StartCpuMatchInput) {
   const user = await prisma.user.findUnique({ where: { id: input.userId } });
   if (!user) throw new Error("USER_NOT_FOUND");
-  if (user.lifePoints < GAME_CONFIG.matchCostLifePoints) throw new Error("NOT_ENOUGH_LIFE_POINTS");
+  const debugFreeMatch = process.env.NODE_ENV !== "production" && process.env.DEBUG_FREE_CPU_MATCH === "true";
+  if (!debugFreeMatch && user.lifePoints < GAME_CONFIG.matchCostLifePoints) {
+    throw new Error("NOT_ENOUGH_LIFE_POINTS");
+  }
 
   const cpuUser = await prisma.user.upsert({
     where: { id: `cpu-${input.botLevel.toLowerCase()}` },
@@ -68,10 +71,12 @@ export async function startCpuMatch(input: StartCpuMatchInput) {
     }
   });
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lifePoints: { decrement: GAME_CONFIG.matchCostLifePoints } }
-  });
+  if (!debugFreeMatch) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lifePoints: { decrement: GAME_CONFIG.matchCostLifePoints } }
+    });
+  }
 
   const match = await prisma.match.create({
     data: {
@@ -94,6 +99,32 @@ export async function startCpuMatch(input: StartCpuMatchInput) {
   });
   auditLog("MATCH_CREATED_CPU", { matchId: match.id, userId: user.id, botLevel: input.botLevel });
   return match;
+}
+
+export async function refillLifePointsForDebug(userId: string, amount?: number) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("DEBUG_DISABLED");
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("USER_NOT_FOUND");
+
+  const refillAmount = amount ?? GAME_CONFIG.debugRefillLifePoints;
+  const targetLifePoints = Math.max(user.lifePoints + refillAmount, GAME_CONFIG.debugMinLifePoints);
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { lifePoints: targetLifePoints }
+  });
+
+  auditLog("DEBUG_LIFEPOINTS_REFILLED", {
+    userId,
+    before: user.lifePoints,
+    after: updated.lifePoints,
+    refillAmount
+  });
+
+  return updated;
 }
 
 function mapBotLevel(level: BotLevel): CpuDifficulty {
