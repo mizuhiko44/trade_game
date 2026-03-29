@@ -11,14 +11,10 @@ import { GAME_CONFIG, REWARDS } from "../config/gameConfig";
 import { auditLog } from "./auditLogService";
 import { calculatePnlBySide, closeAllOpenPositions, createPosition } from "./positionService";
 import { ResolveTurnInput, StartCpuMatchInput } from "../types/game";
+import { decideCpuAction } from "./cpuStrategy/cpuStrategy";
+import { BattleContext, CpuDifficulty } from "./cpuStrategy/types";
 
 const prisma = new PrismaClient();
-
-const levelMultiplier: Record<BotLevel, number> = {
-  EASY: 0.7,
-  NORMAL: 1,
-  HARD: 1.2
-};
 
 type MatchEffectState = {
   shieldUntilTurn: Partial<Record<Side, number>>;
@@ -100,27 +96,17 @@ export async function startCpuMatch(input: StartCpuMatchInput) {
   return match;
 }
 
-function cpuDecision(
-  botLevel: BotLevel,
-  turn: number,
-  currentPrice: number,
-  initialPrice: number
-): { actionType: ActionType; amount: number } {
-  const base = Math.min(GAME_CONFIG.maxInvestmentPerTurn, 80 + turn * 10);
-  const amount = Math.round(base * levelMultiplier[botLevel]);
+function mapBotLevel(level: BotLevel): CpuDifficulty {
+  if (level === BotLevel.HARD) return "hard";
+  if (level === BotLevel.NORMAL) return "normal";
+  return "easy";
+}
 
-  if (botLevel === BotLevel.EASY) {
-    return turn % 3 === 0 ? { actionType: ActionType.HOLD, amount: 0 } : { actionType: ActionType.SELL, amount };
-  }
-
-  if (botLevel === BotLevel.NORMAL) {
-    const actionType = currentPrice >= initialPrice ? ActionType.SELL : ActionType.BUY;
-    return { actionType, amount };
-  }
-
-  // HARD: target side（SELL）優先で価格を押し下げる
-  const actionType = currentPrice > initialPrice - 1 ? ActionType.SELL : ActionType.HOLD;
-  return { actionType, amount: actionType === ActionType.HOLD ? 0 : amount };
+function mapCpuActionToTurnAction(action: "buy" | "sell" | "hold" | "item"): ActionType {
+  if (action === "buy") return ActionType.BUY;
+  if (action === "sell") return ActionType.SELL;
+  if (action === "item") return ActionType.ITEM;
+  return ActionType.HOLD;
 }
 
 function applyItemPrice(itemType: ItemType | undefined, currentPrice: number, side: Side) {
@@ -134,7 +120,10 @@ function applyItemPrice(itemType: ItemType | undefined, currentPrice: number, si
 export async function resolveTurn(input: ResolveTurnInput) {
   const match = await prisma.match.findUnique({
     where: { id: input.matchId },
-    include: { players: true }
+    include: {
+      players: true,
+      turns: { orderBy: { turnNumber: "asc" }, take: 30 }
+    }
   });
   if (!match) throw new Error("MATCH_NOT_FOUND");
   if (match.status !== MatchStatus.ACTIVE) throw new Error("MATCH_NOT_ACTIVE");
@@ -144,12 +133,25 @@ export async function resolveTurn(input: ResolveTurnInput) {
   if (!player || !cpu) throw new Error("PLAYER_NOT_FOUND");
 
   const playerAmount = clamp(input.action.amount ?? 0, 0, GAME_CONFIG.maxInvestmentPerTurn);
-  const botMove = cpuDecision(
-    match.botLevel ?? BotLevel.EASY,
-    match.turnNumber,
-    Number(match.currentPrice),
-    Number(match.initialPrice)
-  );
+  const battleContext: BattleContext = {
+    currentPrice: Number(match.currentPrice),
+    initialPrice: Number(match.initialPrice),
+    targetUpPrice: Number(match.targetUpperPrice),
+    targetDownPrice: Number(match.targetLowerPrice),
+    turn: match.turnNumber,
+    maxTurn: match.maxTurns,
+    playerCash: Number(player.cash),
+    cpuCash: Number(cpu.cash),
+    priceHistory: match.turns.map((turn) => Number(turn.closePrice)),
+    lastActions: [],
+    detectedPatterns: []
+  };
+  const cpuDecision = decideCpuAction(mapBotLevel(match.botLevel ?? BotLevel.EASY), battleContext);
+  const botMove = {
+    actionType: mapCpuActionToTurnAction(cpuDecision.action),
+    amount: clamp(cpuDecision.amount, 0, GAME_CONFIG.maxInvestmentPerTurn),
+    itemType: cpuDecision.itemId === "PRICE_SPIKE" ? ItemType.PRICE_SPIKE : undefined
+  };
 
   const effectState = matchEffects.get(match.id) ?? { shieldUntilTurn: {}, doubleForceUntilTurn: {} };
   const playerDoubleForce = effectState.doubleForceUntilTurn[player.side] === match.turnNumber ? 2 : 1;
@@ -180,6 +182,7 @@ export async function resolveTurn(input: ResolveTurnInput) {
   const afterPlayer = Math.max(GAME_CONFIG.minimumPrice, open + playerDelta);
   let close = Math.max(GAME_CONFIG.minimumPrice, afterPlayer + cpuDelta);
   close = applyItemPrice(input.action.itemType, close, player.side);
+  close = applyItemPrice(botMove.itemType, close, cpu.side);
 
   const high = Math.max(open, afterPlayer, close);
   const low = Math.min(open, afterPlayer, close);
@@ -230,7 +233,13 @@ export async function resolveTurn(input: ResolveTurnInput) {
         amount: playerEffectiveAmount,
         itemType: input.action.itemType
       },
-      { matchTurnId: turn.id, userId: cpu.userId, actionType: botMove.actionType, amount: cpuEffectiveAmount }
+      {
+        matchTurnId: turn.id,
+        userId: cpu.userId,
+        actionType: botMove.actionType,
+        amount: cpuEffectiveAmount,
+        itemType: botMove.itemType
+      }
     ]
   });
 
