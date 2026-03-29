@@ -65,5 +65,19 @@
       "area:docs"
     ],
     "body": "## Goal\n実行環境（Androidエミュレータ / iOSシミュレータ / 実機）ごとに接続先判定を自己診断し、初回起動時に接続ガイドを提示する。\n\n## Acceptance Criteria\n- アプリ内に接続テスト（/health ping）を実装\n- 失敗時に環境別の修正手順を表示\n- 診断結果をDebug画面またはログに保存して共有可能"
+  },
+  {
+    "id": "TG-011",
+    "title": "ロット上限のアバターレベル連動（server+mobile）",
+    "priority": "P1",
+    "importance": "Medium",
+    "labels": [
+      "phase-b",
+      "priority:P1",
+      "importance:medium",
+      "area:server",
+      "area:mobile"
+    ],
+    "body": "## Goal\nロット上限を固定値ではなく、アバター/ユーザレベルに応じて段階的に上げられる仕様にする。\n\n## Acceptance Criteria\n- サーバでユーザレベルとロット上限の計算ロジックを実装\n- APIレスポンスで現在上限を返却\n- モバイルのロット選択UIが返却値に追従する"
   }
 ]
