@@ -1,0 +1,31 @@
+name: Sync Backlog Issues
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - docs/issue-backlog.json
+      - scripts/sync-issues.mjs
+      - scripts/sync-issues.sh
+      - .github/workflows/sync-issues.yml
+
+jobs:
+  sync-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sync backlog to GitHub Issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/sync-issues.sh
