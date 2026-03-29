@@ -303,13 +303,10 @@ export async function resolveTurn(input: ResolveTurnInput) {
 
   if (close >= Number(match.targetUpperPrice)) {
     status = MatchStatus.FINISHED;
-    winnerSide = Side.BUY;
   } else if (close <= Number(match.targetLowerPrice)) {
     status = MatchStatus.FINISHED;
-    winnerSide = Side.SELL;
   } else if (match.turnNumber >= match.maxTurns && currentSubturn >= 3) {
     status = MatchStatus.FINISHED;
-    winnerSide = close >= Number(match.initialPrice) ? Side.BUY : Side.SELL;
   }
 
   if (status === MatchStatus.FINISHED) {
@@ -318,9 +315,7 @@ export async function resolveTurn(input: ResolveTurnInput) {
       match.id,
       new Map(match.players.map((p) => [p.userId, p.side]))
     );
-    if (pnlBySide.BUY !== pnlBySide.SELL) {
-      winnerSide = pnlBySide.BUY > pnlBySide.SELL ? Side.BUY : Side.SELL;
-    }
+    winnerSide = pnlBySide.BUY === pnlBySide.SELL ? null : pnlBySide.BUY > pnlBySide.SELL ? Side.BUY : Side.SELL;
   }
 
   const nextTurnNumber = status === MatchStatus.FINISHED ? match.turnNumber : currentSubturn >= 3 ? match.turnNumber + 1 : match.turnNumber;

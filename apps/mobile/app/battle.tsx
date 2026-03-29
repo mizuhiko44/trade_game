@@ -47,6 +47,7 @@ const CHART_PRESETS = {
 } as const;
 
 const UI_REVISION = "battle-ui-r7";
+const SELF_USER_ID = "demo-user";
 
 export default function BattleScreen() {
   const router = useRouter();
@@ -70,8 +71,8 @@ export default function BattleScreen() {
   );
 
   const currentPrice = Number(state?.currentPrice ?? 100);
-  const selfPlayer = state?.players?.find((p: any) => p.userId === "demo-user");
-  const opponentPlayer = state?.players?.find((p: any) => p.userId !== "demo-user");
+  const selfPlayer = state?.players?.find((p: any) => p.userId === SELF_USER_ID);
+  const opponentPlayer = state?.players?.find((p: any) => p.userId !== SELF_USER_ID);
 
   const avatarLevelBonus = 0; // 将来: アバターレベルに応じて加算
   const maxLot = 1000 + avatarLevelBonus;
@@ -122,6 +123,10 @@ export default function BattleScreen() {
 
   async function action(type: TradeAction, source: "USER" | "AUTO" = "USER") {
     if (!matchId) return;
+    if (state?.status === "FINISHED") {
+      setNotice("この対戦は終了済みです。結果画面に遷移してください。");
+      return;
+    }
     if (source === "USER" && !isUserTurn) {
       setNotice("現在は相手ターンです。");
       return;
@@ -143,19 +148,37 @@ export default function BattleScreen() {
       setIsUserTurn(false);
       setTimeout(() => setIsUserTurn(true), 5000);
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      if (message.includes("MATCH_NOT_ACTIVE")) {
+        setNotice("対戦はすでに終了しています（MATCH_NOT_ACTIVE）。");
+        setIsUserTurn(false);
+        setError(null);
+        return;
+      }
+      setError(message);
     }
   }
 
   async function useItem(itemType: "PRICE_SPIKE" | "SHIELD" | "DOUBLE_FORCE") {
     if (!matchId) return;
+    if (state?.status === "FINISHED") {
+      setNotice("この対戦は終了済みです。");
+      return;
+    }
     try {
       setError(null);
       const data = await sendAction(matchId, "ITEM", 0, itemType);
       setState(data.match);
       await refreshPositions();
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      if (message.includes("MATCH_NOT_ACTIVE")) {
+        setNotice("対戦はすでに終了しています（MATCH_NOT_ACTIVE）。");
+        setIsUserTurn(false);
+        setError(null);
+        return;
+      }
+      setError(message);
     }
   }
 
@@ -222,6 +245,8 @@ export default function BattleScreen() {
   const opponentSide: "BUY" | "SELL" = selfSide === "BUY" ? "SELL" : "BUY";
   const selfPnl = pnlBySide[selfSide];
   const opponentPnl = pnlBySide[opponentSide];
+  const selfPositions = positions.filter((p) => p.userId === selfPlayer?.userId);
+  const opponentPositions = positions.filter((p) => p.userId === opponentPlayer?.userId);
   const selfResultLabel =
     state?.status === "FINISHED"
       ? selfPnl === opponentPnl
@@ -334,14 +359,15 @@ export default function BattleScreen() {
         </View>
       ) : null}
       <View style={{ borderWidth: 1, borderRadius: 8, padding: 8, gap: 6 }}>
-        <Text style={{ fontWeight: "700" }}>約定一覧</Text>
+        <Text style={{ fontWeight: "700" }}>自分の約定一覧</Text>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
           <Text style={{ width: 50 }}>Side</Text>
           <Text style={{ width: 80 }}>価格</Text>
           <Text style={{ width: 90 }}>利益</Text>
           <Text style={{ width: 80 }}>決済</Text>
         </View>
-        {positions.map((p) => (
+        {selfPositions.length === 0 ? <Text>約定はまだありません。</Text> : null}
+        {selfPositions.map((p) => (
           <View key={String(p.id)} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <Text style={{ width: 50 }}>{p.side}</Text>
             <Text style={{ width: 80 }}>{Number(p.entryPrice).toFixed(2)}</Text>
@@ -353,6 +379,24 @@ export default function BattleScreen() {
             ) : (
               <Text style={{ width: 80 }}>済</Text>
             )}
+          </View>
+        ))}
+      </View>
+      <View style={{ borderWidth: 1, borderRadius: 8, padding: 8, gap: 6 }}>
+        <Text style={{ fontWeight: "700" }}>相手の約定一覧（CPU含む）</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text style={{ width: 50 }}>Side</Text>
+          <Text style={{ width: 80 }}>価格</Text>
+          <Text style={{ width: 90 }}>利益</Text>
+          <Text style={{ width: 80 }}>状態</Text>
+        </View>
+        {opponentPositions.length === 0 ? <Text>相手の約定はまだありません。</Text> : null}
+        {opponentPositions.map((p) => (
+          <View key={String(p.id)} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={{ width: 50 }}>{p.side}</Text>
+            <Text style={{ width: 80 }}>{Number(p.entryPrice).toFixed(2)}</Text>
+            <Text style={{ width: 90 }}>{calcPositionPnl(p).toFixed(2)}</Text>
+            <Text style={{ width: 80 }}>{p.status === "OPEN" ? "保有中" : "済"}</Text>
           </View>
         ))}
       </View>
