@@ -105,6 +105,7 @@ npm install
 | PCの `curl localhost:4000/health` は成功、実機だけ失敗 | 端末→PC通信が遮断 | スマホブラウザで `http://<PC_IP>:4000/health` を確認。失敗ならFW/VPN/Wi-Fi分離を疑う |
 | Expo Goでは起動するがAPIだけ失敗 | `.env`変更が反映されていない | Metro再起動（`start:clear`）と Expo Go 再起動 |
 | ときどき失敗する | ネットワーク品質 / 省電力でWi-Fi切替 | テスト中は同一Wi-Fi固定・省電力OFF・5GHz/2.4GHzの切替抑制 |
+| `Unable to activate keep awake` が出る | Expoランタイム側の keep-awake 失敗（環境依存） | Expo Go再起動/端末再起動。ログノイズ化を防ぐためアプリ側でこの警告を無視 |
 
 ### 5分でできる確認手順
 
