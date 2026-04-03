@@ -101,6 +101,7 @@ npm install
 | 症状 | 推定原因 | 対策 |
 |---|---|---|
 | `localhost:5432` に届かないエラー | DBポートをAPI URLに設定している | `.env` の `EXPO_PUBLIC_API_BASE_URL` を `http://<PC_IP>:4000` に修正 |
+| APIレスポンスが `DB_UNREACHABLE` / `Can't reach database server at localhost:5432` | APIサーバからPostgreSQLへ接続できない | PostgreSQL起動、`apps/server/.env` の `DATABASE_URL` を確認、`npx prisma migrate dev` と `npm run seed` を再実行 |
 | どのAPIも即 `NETWORK_ERROR` | URL向き先誤り（`localhost` / `10.0.2.2` / 別IP） | `.env` を PC LAN IP にし、`npm run start:clear` で再起動 |
 | PCの `curl localhost:4000/health` は成功、実機だけ失敗 | 端末→PC通信が遮断 | スマホブラウザで `http://<PC_IP>:4000/health` を確認。失敗ならFW/VPN/Wi-Fi分離を疑う |
 | Expo Goでは起動するがAPIだけ失敗 | `.env`変更が反映されていない | Metro再起動（`start:clear`）と Expo Go 再起動 |
@@ -111,9 +112,10 @@ npm install
 
 1. PC で `curl http://localhost:4000/health` が通るか確認
 2. スマホブラウザで `http://<PCのLAN_IP>:4000/health` を開けるか確認
-3. 開けない場合はネットワーク/ファイアウォール問題
-4. 開けるのにアプリだけ失敗する場合は `.env` と Metro キャッシュを再確認
-5. Metroログの `NETWORK_ERROR ... (url=...)` を確認し、実際に叩いているURLが期待通りか確認
+3. APIエラー本文に `DB_UNREACHABLE` が出る場合、`apps/server` でDB接続を確認（Postgres起動・`DATABASE_URL`）
+4. 開けない場合はネットワーク/ファイアウォール問題
+5. 開けるのにアプリだけ失敗する場合は `.env` と Metro キャッシュを再確認
+6. Metroログの `NETWORK_ERROR ... (url=...)` を確認し、実際に叩いているURLが期待通りか確認
 
 ### 追加の実践対策（Android実機向け）
 
