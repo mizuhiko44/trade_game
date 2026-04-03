@@ -1,6 +1,6 @@
 # Android実機テスト チェックリスト（Expo）
 
-このドキュメントは `apps/mobile` を Android 実機で検証するときの最短手順と、`NETWORK_ERROR: request failed` が出たときの切り分け手順をまとめたものです。
+このドキュメントは `apps/mobile` を Android 実機で検証するときの最短手順と、`NETWORK_ERROR: request failed` が出たときの原因推定・対策をまとめたものです。
 
 ## 1. 事前条件
 
@@ -89,12 +89,35 @@ npm install
 4. **キャッシュ残り**
    - `.env` 修正後に Metro を再起動していない
 
+### 実装仕様ベースの重要ポイント（このプロジェクト固有）
+
+- `EXPO_PUBLIC_API_BASE_URL` が未設定または不正だと、Android は `http://10.0.2.2:4000/api` をフォールバックに使います。これは**エミュレータ向け**なので、実機では到達不能です。
+- `localhost` / `127.0.0.1` が設定されている場合、ランタイムでURL書き換えが走りますが、最終的に実機から到達できるURLになっているかはログで要確認です。
+- API呼び出し時に `[API] ...` ログが出るので、`network_error` ログに含まれる `url=...` がそのまま原因特定の手掛かりになります。
+
+### 症状別の推定原因と対策
+
+| 症状 | 推定原因 | 対策 |
+|---|---|---|
+| どのAPIも即 `NETWORK_ERROR` | URL向き先誤り（`localhost` / `10.0.2.2` / 別IP） | `.env` を PC LAN IP にし、`npm run start:clear` で再起動 |
+| PCの `curl localhost:4000/health` は成功、実機だけ失敗 | 端末→PC通信が遮断 | スマホブラウザで `http://<PC_IP>:4000/health` を確認。失敗ならFW/VPN/Wi-Fi分離を疑う |
+| Expo Goでは起動するがAPIだけ失敗 | `.env`変更が反映されていない | Metro再起動（`start:clear`）と Expo Go 再起動 |
+| ときどき失敗する | ネットワーク品質 / 省電力でWi-Fi切替 | テスト中は同一Wi-Fi固定・省電力OFF・5GHz/2.4GHzの切替抑制 |
+
 ### 5分でできる確認手順
 
 1. PC で `curl http://localhost:4000/health` が通るか確認
 2. スマホブラウザで `http://<PCのLAN_IP>:4000/health` を開けるか確認
 3. 開けない場合はネットワーク/ファイアウォール問題
 4. 開けるのにアプリだけ失敗する場合は `.env` と Metro キャッシュを再確認
+5. Metroログの `NETWORK_ERROR ... (url=...)` を確認し、実際に叩いているURLが期待通りか確認
+
+### 追加の実践対策（Android実機向け）
+
+- PCのファイアウォールで TCP `4000` を許可
+- セキュリティソフトのネットワーク保護機能を一時的に無効化して再確認
+- 社内/学校Wi-Fiの場合は `Tunnel` 接続を優先
+- 可能ならサーバ起動を `HOST=0.0.0.0` で固定（環境依存の待受制約を回避）
 
 ## 7. 完了条件（Definition of Done）
 
