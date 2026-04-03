@@ -65,6 +65,17 @@ export default function BattleScreen() {
   const [chartTapPrice, setChartTapPrice] = useState<number | null>(null);
   const [startLog, setStartLog] = useState<string[]>([]);
 
+  function toUserFacingError(e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message.includes("DB_SCHEMA_NOT_READY") || message.includes("does not exist in the current database")) {
+      return "DBスキーマ未適用: `cd apps/server && npx prisma migrate dev --name init && npm run seed` を実行してください。";
+    }
+    if (message.includes("DB_UNREACHABLE") || message.includes("Database is unreachable")) {
+      return "DB接続エラー: PostgreSQL が起動しているか確認してください（Windows + Docker Desktop の場合はデーモン起動も確認）。apps/server/.env の DATABASE_URL も確認してください。";
+    }
+    return message;
+  }
+
   const chartData = useMemo(
     () => [...CHART_PRESETS[assetType], ...((state?.turns as any[]) ?? [])],
     [assetType, state?.turns]
@@ -117,8 +128,12 @@ export default function BattleScreen() {
 
   async function refreshPositions() {
     if (!matchId) return;
-    const data = await fetchPositions(matchId);
-    setPositions((data.positions ?? []) as Position[]);
+    try {
+      const data = await fetchPositions(matchId);
+      setPositions((data.positions ?? []) as Position[]);
+    } catch (e) {
+      setError(toUserFacingError(e));
+    }
   }
 
   async function action(type: TradeAction, source: "USER" | "AUTO" = "USER") {
@@ -148,7 +163,7 @@ export default function BattleScreen() {
       setIsUserTurn(false);
       setTimeout(() => setIsUserTurn(true), 5000);
     } catch (e) {
-      const message = (e as Error).message;
+      const message = toUserFacingError(e);
       if (message.includes("MATCH_NOT_ACTIVE")) {
         setNotice("対戦はすでに終了しています（MATCH_NOT_ACTIVE）。");
         setIsUserTurn(false);
@@ -171,7 +186,7 @@ export default function BattleScreen() {
       setState(data.match);
       await refreshPositions();
     } catch (e) {
-      const message = (e as Error).message;
+      const message = toUserFacingError(e);
       if (message.includes("MATCH_NOT_ACTIVE")) {
         setNotice("対戦はすでに終了しています（MATCH_NOT_ACTIVE）。");
         setIsUserTurn(false);
@@ -265,17 +280,25 @@ export default function BattleScreen() {
   }
 
   async function settlePosition(positionId: string) {
-    await closePosition(positionId, currentPrice, Number(state?.turnNumber ?? 1));
-    await refreshPositions();
+    try {
+      await closePosition(positionId, currentPrice, Number(state?.turnNumber ?? 1));
+      await refreshPositions();
+    } catch (e) {
+      setError(toUserFacingError(e));
+    }
   }
 
   async function settleAllOpenPositions() {
-    const openPositions = positions.filter((p) => p.status === "OPEN");
-    for (const p of openPositions) {
-      await closePosition(String(p.id), currentPrice, Number(state?.turnNumber ?? 1));
+    try {
+      const openPositions = positions.filter((p) => p.status === "OPEN");
+      for (const p of openPositions) {
+        await closePosition(String(p.id), currentPrice, Number(state?.turnNumber ?? 1));
+      }
+      setNotice(`オール決済しました（${openPositions.length}件）`);
+      await refreshPositions();
+    } catch (e) {
+      setError(toUserFacingError(e));
     }
-    setNotice(`オール決済しました（${openPositions.length}件）`);
-    await refreshPositions();
   }
 
   return (
@@ -347,11 +370,15 @@ export default function BattleScreen() {
             <Button
               title="成行で決済"
               onPress={async () => {
-                const result = await closePosition(selectedMarker.positionId, currentPrice, Number(state?.turnNumber ?? 1));
-                const pnl = Number(result?.position?.realizedPnl ?? 0);
-                setNotice(`決済しました。損益=${pnl.toFixed(2)}`);
-                setSelectedMarker(null);
-                await refreshPositions();
+                try {
+                  const result = await closePosition(selectedMarker.positionId, currentPrice, Number(state?.turnNumber ?? 1));
+                  const pnl = Number(result?.position?.realizedPnl ?? 0);
+                  setNotice(`決済しました。損益=${pnl.toFixed(2)}`);
+                  setSelectedMarker(null);
+                  await refreshPositions();
+                } catch (e) {
+                  setError(toUserFacingError(e));
+                }
               }}
             />
           ) : null}
