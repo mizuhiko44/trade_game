@@ -23,6 +23,14 @@ export default function HomeScreen() {
     }
   }
 
+  function toUserFacingError(e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message.includes("DB_UNREACHABLE") || message.includes("Database is unreachable")) {
+      return "DB接続エラー: PostgreSQL が起動しているか確認してください（Windows + Docker Desktop の場合はデーモン起動も確認）。apps/server/.env の DATABASE_URL も確認してください。";
+    }
+    return message;
+  }
+
   useEffect(() => {
     load();
   }, []);
@@ -47,8 +55,12 @@ export default function HomeScreen() {
       <Button
         title="ログインボーナス受け取り"
         onPress={async () => {
-          await claimBonus();
-          await load();
+          try {
+            await claimBonus();
+            await load();
+          } catch (e) {
+            setError(toUserFacingError(e));
+          }
         }}
       />
       <Button
