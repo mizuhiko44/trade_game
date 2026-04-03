@@ -38,6 +38,18 @@ docker run --name trade-game-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=tra
 - PowerShell で `docker version` が通ることを確認してから `docker run` を実行
 - Docker が使えない場合はローカルPostgreSQLをインストールし、`apps/server/.env` の `DATABASE_URL` をその接続先に合わせる
 
+Dockerを使わない（WindowsローカルPostgreSQL）場合の例:
+
+```powershell
+winget install PostgreSQL.PostgreSQL
+```
+
+インストール後:
+
+- PostgreSQLサービスを起動
+- `apps/server/.env` の `DATABASE_URL` をローカル設定に合わせる
+- `cd apps/server && npx prisma migrate dev --name init && npm run seed`
+
 `npm run dev` で `EADDRINUSE: ...:4000` が出る場合:
 
 - 既に 4000 番ポートを使う別プロセスが起動中

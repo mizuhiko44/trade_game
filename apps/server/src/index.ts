@@ -18,6 +18,11 @@ const server = app.listen(port, () => {
       database: summary,
       message: checked.message
     });
+    console.warn("[startup] remediation:");
+    console.warn("  1) Start PostgreSQL (Docker Desktop or local service)");
+    console.warn("  2) Verify apps/server/.env DATABASE_URL host/port/db");
+    console.warn("  3) Check DB health: GET http://localhost:4000/health/db");
+    console.warn("  4) Docker users: run `docker version` then start postgres container on 5432");
   })();
 });
 

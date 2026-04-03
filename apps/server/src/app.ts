@@ -24,7 +24,7 @@ app.get("/health/db", async (_req, res) => {
     code: "DB_UNREACHABLE",
     database: summary,
     message: checked.message,
-    hint: "Start PostgreSQL and verify apps/server/.env DATABASE_URL host:port. On Windows with Docker Desktop, ensure the Docker daemon is running."
+    hint: "Start PostgreSQL (Docker Desktop or local service) and verify apps/server/.env DATABASE_URL host:port."
   });
 });
 
