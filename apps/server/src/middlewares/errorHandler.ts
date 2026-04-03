@@ -2,6 +2,18 @@ import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { ApiError, mapDomainError } from "../utils/apiError";
 
+function mapInfrastructureError(err: Error) {
+  const message = err.message ?? "";
+  if (message.includes("Can't reach database server")) {
+    return {
+      status: 503,
+      code: "DB_UNREACHABLE",
+      message: "Database is unreachable. Ensure PostgreSQL is running and DATABASE_URL points to the correct host:port. If using Docker Desktop on Windows, confirm the Docker daemon is running."
+    };
+  }
+  return null;
+}
+
 export function requestLogger(req: Request, _res: Response, next: NextFunction) {
   console.info(`[REQ] ${req.method} ${req.path}`);
   next();
@@ -21,6 +33,10 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   }
 
   if (err instanceof Error) {
+    const infra = mapInfrastructureError(err);
+    if (infra) {
+      return res.status(infra.status).json({ code: infra.code, message: infra.message });
+    }
     const mapped = mapDomainError(err);
     return res.status(mapped.status).json({ code: mapped.code, message: err.message });
   }
