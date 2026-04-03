@@ -75,6 +75,7 @@ npm install
 
 1. **API の向き先が誤り**
    - `EXPO_PUBLIC_API_BASE_URL` が `localhost` のまま
+   - PostgreSQL ポート `5432` を指定してしまっている（APIは `4000`）
    - 端末から到達できない IP / ポートになっている
 
 2. **サーバ未起動 / 起動ポート違い**
@@ -99,6 +100,7 @@ npm install
 
 | 症状 | 推定原因 | 対策 |
 |---|---|---|
+| `localhost:5432` に届かないエラー | DBポートをAPI URLに設定している | `.env` の `EXPO_PUBLIC_API_BASE_URL` を `http://<PC_IP>:4000` に修正 |
 | どのAPIも即 `NETWORK_ERROR` | URL向き先誤り（`localhost` / `10.0.2.2` / 別IP） | `.env` を PC LAN IP にし、`npm run start:clear` で再起動 |
 | PCの `curl localhost:4000/health` は成功、実機だけ失敗 | 端末→PC通信が遮断 | スマホブラウザで `http://<PC_IP>:4000/health` を確認。失敗ならFW/VPN/Wi-Fi分離を疑う |
 | Expo Goでは起動するがAPIだけ失敗 | `.env`変更が反映されていない | Metro再起動（`start:clear`）と Expo Go 再起動 |
@@ -118,6 +120,7 @@ npm install
 - セキュリティソフトのネットワーク保護機能を一時的に無効化して再確認
 - 社内/学校Wi-Fiの場合は `Tunnel` 接続を優先
 - 可能ならサーバ起動を `HOST=0.0.0.0` で固定（環境依存の待受制約を回避）
+- 端末ログで `[API] base_url_resolved` を確認し、`API_BASE_URL` が `:4000/api` になっていることを確認
 
 ## 7. 完了条件（Definition of Done）
 
