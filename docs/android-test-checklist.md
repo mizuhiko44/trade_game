@@ -38,6 +38,14 @@ docker run --name trade-game-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=tra
 - PowerShell で `docker version` が通ることを確認してから `docker run` を実行
 - Docker が使えない場合はローカルPostgreSQLをインストールし、`apps/server/.env` の `DATABASE_URL` をその接続先に合わせる
 
+`npm run dev` で `EADDRINUSE: ...:4000` が出る場合:
+
+- 既に 4000 番ポートを使う別プロセスが起動中
+- Windows 例:
+  - `netstat -ano | findstr :4000`
+  - `taskkill /PID <PID> /F`
+- または `PORT=4001 npm run dev` で別ポート起動（この場合、`apps/mobile/.env` の API URL も同じポートに変更）
+
 ## 3. 実機用 API URL 設定
 
 `apps/mobile/.env` を編集:
