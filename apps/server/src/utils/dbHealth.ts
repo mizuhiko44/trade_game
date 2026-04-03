@@ -30,3 +30,12 @@ export async function checkDbConnection() {
   }
 }
 
+export async function checkDbSchema() {
+  try {
+    await prisma.user.count();
+    return { ok: true as const };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { ok: false as const, message };
+  }
+}

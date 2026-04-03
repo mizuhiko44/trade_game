@@ -24,6 +24,7 @@ curl http://localhost:4000/health/db
 
 - [ ] `{"ok":true}` が返る
 - [ ] `/health/db` も `ok: true` が返る
+- [ ] `/health/db` が `DB_SCHEMA_NOT_READY` の場合は migrate + seed を実行
 
 DBが起動していない場合は先に起動（例: Docker）:
 
@@ -138,6 +139,7 @@ npm install
 |---|---|---|
 | `localhost:5432` に届かないエラー | DBポートをAPI URLに設定している | `.env` の `EXPO_PUBLIC_API_BASE_URL` を `http://<PC_IP>:4000` に修正 |
 | APIレスポンスが `DB_UNREACHABLE` / `Can't reach database server at localhost:5432` | APIサーバからPostgreSQLへ接続できない | PostgreSQL起動、`apps/server/.env` の `DATABASE_URL` を確認、`npx prisma migrate dev` と `npm run seed` を再実行 |
+| `The table public.User does not exist` / `DB_SCHEMA_NOT_READY` | DBは起動しているがスキーマ未作成 | `cd apps/server && npx prisma migrate dev --name init && npm run seed` |
 | どのAPIも即 `NETWORK_ERROR` | URL向き先誤り（`localhost` / `10.0.2.2` / 別IP） | `.env` を PC LAN IP にし、`npm run start:clear` で再起動 |
 | PCの `curl localhost:4000/health` は成功、実機だけ失敗 | 端末→PC通信が遮断 | スマホブラウザで `http://<PC_IP>:4000/health` を確認。失敗ならFW/VPN/Wi-Fi分離を疑う |
 | Expo Goでは起動するがAPIだけ失敗 | `.env`変更が反映されていない | Metro再起動（`start:clear`）と Expo Go 再起動 |

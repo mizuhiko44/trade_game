@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import app from "./app";
-import { checkDbConnection, summarizeDatabaseUrl } from "./utils/dbHealth";
+import { checkDbConnection, checkDbSchema, summarizeDatabaseUrl } from "./utils/dbHealth";
 
 dotenv.config();
 
@@ -11,7 +11,17 @@ const server = app.listen(port, () => {
     const summary = summarizeDatabaseUrl(process.env.DATABASE_URL);
     const checked = await checkDbConnection();
     if (checked.ok) {
-      console.log("[startup] database connection ok", summary);
+      const schema = await checkDbSchema();
+      if (schema.ok) {
+        console.log("[startup] database connection ok", summary);
+        return;
+      }
+      console.warn("[startup] database schema not ready", {
+        database: summary,
+        message: schema.message
+      });
+      console.warn("[startup] remediation:");
+      console.warn("  Run: cd apps/server && npx prisma migrate dev --name init && npm run seed");
       return;
     }
     console.warn("[startup] database unreachable", {

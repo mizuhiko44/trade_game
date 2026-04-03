@@ -25,6 +25,9 @@ export default function HomeScreen() {
 
   function toUserFacingError(e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
+    if (message.includes("DB_SCHEMA_NOT_READY") || message.includes("does not exist in the current database")) {
+      return "DBスキーマ未適用: `cd apps/server && npx prisma migrate dev --name init && npm run seed` を実行してください。";
+    }
     if (message.includes("DB_UNREACHABLE") || message.includes("Database is unreachable")) {
       return "DB接続エラー: PostgreSQL が起動しているか確認してください（Windows + Docker Desktop の場合はデーモン起動も確認）。apps/server/.env の DATABASE_URL も確認してください。";
     }

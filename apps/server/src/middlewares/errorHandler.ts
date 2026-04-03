@@ -11,6 +11,13 @@ function mapInfrastructureError(err: Error) {
       message: "Database is unreachable. Ensure PostgreSQL is running and DATABASE_URL points to the correct host:port. If using Docker Desktop on Windows, confirm the Docker daemon is running."
     };
   }
+  if (message.includes("does not exist in the current database")) {
+    return {
+      status: 503,
+      code: "DB_SCHEMA_NOT_READY",
+      message: "Database schema is not ready. Run `cd apps/server && npx prisma migrate dev --name init && npm run seed`."
+    };
+  }
   return null;
 }
 
