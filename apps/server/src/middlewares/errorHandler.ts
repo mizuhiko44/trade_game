@@ -8,7 +8,7 @@ function mapInfrastructureError(err: Error) {
     return {
       status: 503,
       code: "DB_UNREACHABLE",
-      message: "Database is unreachable. Ensure PostgreSQL is running and DATABASE_URL points to the correct host:port."
+      message: "Database is unreachable. Ensure PostgreSQL is running and DATABASE_URL points to the correct host:port. If using Docker Desktop on Windows, confirm the Docker daemon is running."
     };
   }
   return null;

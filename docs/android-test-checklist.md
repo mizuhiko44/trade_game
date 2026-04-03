@@ -19,9 +19,24 @@ npm run dev
 
 ```bash
 curl http://localhost:4000/health
+curl http://localhost:4000/health/db
 ```
 
 - [ ] `{"ok":true}` が返る
+- [ ] `/health/db` も `ok: true` が返る
+
+DBが起動していない場合は先に起動（例: Docker）:
+
+```bash
+docker version
+docker run --name trade-game-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=trade_game -p 5432:5432 -d postgres:16
+```
+
+`dockerDesktopLinuxEngine` が見つからないエラーが出る場合（Windows）:
+
+- Docker Desktop が起動していないため、まず Docker Desktop を起動する
+- PowerShell で `docker version` が通ることを確認してから `docker run` を実行
+- Docker が使えない場合はローカルPostgreSQLをインストールし、`apps/server/.env` の `DATABASE_URL` をその接続先に合わせる
 
 ## 3. 実機用 API URL 設定
 
