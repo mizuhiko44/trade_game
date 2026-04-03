@@ -37,16 +37,33 @@ function rewriteLoopbackForRuntime(url: string, lanApiBaseUrl: string | null) {
   }
 }
 
+function rewriteLikelyDbPort(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.port !== "5432") return { url, source: "env" as const };
+    parsed.port = "4000";
+    parsed.pathname = "/api";
+    return {
+      url: parsed.toString().replace(/\/$/, ""),
+      source: "env-db-port-rewritten-to-api-port" as const
+    };
+  } catch {
+    return { url, source: "env" as const };
+  }
+}
+
 const envApiBaseUrlRaw = normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
 const lanApiBaseUrl = inferLanApiBaseUrlFromExpoHost();
 const platformFallback = Platform.OS === "android" ? "http://10.0.2.2:4000/api" : "http://localhost:4000/api";
 
 const envResolved = envApiBaseUrlRaw ? rewriteLoopbackForRuntime(envApiBaseUrlRaw, lanApiBaseUrl) : null;
+const envPortResolved = envResolved ? rewriteLikelyDbPort(envResolved.url) : null;
 
-export const API_BASE_URL = envResolved?.url ?? lanApiBaseUrl ?? platformFallback;
+export const API_BASE_URL = envPortResolved?.url ?? envResolved?.url ?? lanApiBaseUrl ?? platformFallback;
 export const USER_ID = "demo-user";
 
-export const API_BASE_URL_SOURCE = envResolved?.source
+export const API_BASE_URL_SOURCE = envPortResolved?.source
+  ?? envResolved?.source
   ?? (lanApiBaseUrl
     ? "expo-host"
     : Platform.OS === "android"
