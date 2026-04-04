@@ -309,23 +309,10 @@ export default function BattleScreen() {
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
       <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
-      <Text>ターン: {state?.turnNumber ?? 1}</Text>
-      <Text>ローソク足内バトル: {Number(state?.subturn ?? 1)}/3</Text>
-      <Text>ロット選択（最大 {maxLot}）</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator style={{ maxHeight: 44 }}>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {lotOptions.map((lot) => (
-            <Button key={lot} title={lot === amount ? `●${lot}` : String(lot)} onPress={() => setAmount(lot)} />
-          ))}
-        </View>
-      </ScrollView>
+      <Text>
+        ターン: {state?.turnNumber ?? 1}（ローソク足内バトル {Number(state?.subturn ?? 1)}/3）
+      </Text>
       <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        <Button title="⚡Price" onPress={() => useItem("PRICE_SPIKE")} />
-        <Button title="🛡Shield" onPress={() => useItem("SHIELD")} />
-        <Button title="💥Force" onPress={() => useItem("DOUBLE_FORCE")} />
-        <Button title="🧹オール決済" onPress={settleAllOpenPositions} />
-      </View>
 
       {state?.status === "FINISHED" ? (
         <Text style={{ fontWeight: "700" }}>
@@ -349,13 +336,27 @@ export default function BattleScreen() {
         }}
       />
       {chartTapPrice !== null ? (
-        <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 6 }}>
+        <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 8 }}>
           <Text style={{ fontWeight: "700" }}>チャートタップ操作</Text>
           <Text>タップ価格: {chartTapPrice.toFixed(2)}</Text>
+          <Text>ロット選択（最大 {maxLot}）</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator style={{ maxHeight: 44 }}>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {lotOptions.map((lot) => (
+                <Button key={lot} title={lot === amount ? `●${lot}` : String(lot)} onPress={() => setAmount(lot)} />
+              ))}
+            </View>
+          </ScrollView>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
             <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
             <Button title="Hold" onPress={() => action("HOLD")} />
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <Button title="⚡" onPress={() => useItem("PRICE_SPIKE")} />
+            <Button title="🛡" onPress={() => useItem("SHIELD")} />
+            <Button title="💥" onPress={() => useItem("DOUBLE_FORCE")} />
+            <Button title="🧹" onPress={settleAllOpenPositions} />
           </View>
         </View>
       ) : null}
