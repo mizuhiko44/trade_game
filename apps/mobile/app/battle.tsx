@@ -65,6 +65,8 @@ export default function BattleScreen() {
   const [chartTapPrice, setChartTapPrice] = useState<number | null>(null);
   const [startLog, setStartLog] = useState<string[]>([]);
   const [lotSliderWidth, setLotSliderWidth] = useState(1);
+  const [showLastTurnPopup, setShowLastTurnPopup] = useState(false);
+  const [lastTurnPopupShownAtTurn, setLastTurnPopupShownAtTurn] = useState<number | null>(null);
 
   function toUserFacingError(e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
@@ -225,6 +227,19 @@ export default function BattleScreen() {
     }
   }, [isUserTurn, remainingSec]);
 
+  useEffect(() => {
+    const turnNumber = Number(state?.turnNumber ?? 1);
+    const maxTurns = Number(state?.maxTurns ?? 5);
+    if (state?.status === "FINISHED") return;
+    if (turnNumber < maxTurns) return;
+    if (lastTurnPopupShownAtTurn === turnNumber) return;
+
+    setShowLastTurnPopup(true);
+    setLastTurnPopupShownAtTurn(turnNumber);
+    const timer = setTimeout(() => setShowLastTurnPopup(false), 3000);
+    return () => clearTimeout(timer);
+  }, [lastTurnPopupShownAtTurn, state?.maxTurns, state?.status, state?.turnNumber]);
+
   const executionMarkers: Array<{
     id: string;
     positionId: string;
@@ -327,9 +342,7 @@ export default function BattleScreen() {
       <Text style={{ color: "#1d4ed8" }}>{`${turnInfo} / ローソク足内バトル ${Number(state?.subturn ?? 1)}/3`}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
-      <Text>
-        ターン: {state?.turnNumber ?? 1}（ローソク足内バトル {Number(state?.subturn ?? 1)}/3）
-      </Text>
+      <Text>ターン: {state?.turnNumber ?? 1}</Text>
       <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
 
       {state?.status === "FINISHED" ? (
@@ -474,6 +487,26 @@ export default function BattleScreen() {
           <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
         ))}
       </View>
+      {showLastTurnPopup ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 24,
+            left: 20,
+            right: 20,
+            backgroundColor: "#fef3c7",
+            borderColor: "#f59e0b",
+            borderWidth: 2,
+            borderRadius: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 14
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "800", color: "#b45309", textAlign: "center" }}>
+            🎉 ラストターン突入！全力でいこう！
+          </Text>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }

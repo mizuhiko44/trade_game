@@ -9,7 +9,7 @@ import {
 } from "@prisma/client";
 import { GAME_CONFIG, REWARDS } from "../config/gameConfig";
 import { auditLog } from "./auditLogService";
-import { calculatePnlBySide, closeAllOpenPositions, createPosition } from "./positionService";
+import { calculatePnlBySide, closeAllOpenPositions, closePosition, createPosition, listPositions } from "./positionService";
 import { ResolveTurnInput, StartCpuMatchInput } from "../types/game";
 import { decideCpuAction } from "./cpuStrategy/cpuStrategy";
 import { BattleContext, CpuDifficulty, CpuStyle } from "./cpuStrategy/types";
@@ -162,6 +162,44 @@ function applyItemPrice(itemType: ItemType | undefined, currentPrice: number, si
     return side === Side.BUY ? GAME_CONFIG.upperTarget - 1 : GAME_CONFIG.lowerTarget + 1;
   }
   return currentPrice;
+}
+
+function shouldCpuClosePosition(params: {
+  entryPrice: number;
+  closePrice: number;
+  side: Side;
+  quantity: number;
+  turnNumber: number;
+  maxTurns: number;
+}) {
+  const direction = params.side === Side.BUY ? 1 : -1;
+  const pnl = (params.closePrice - params.entryPrice) * direction * params.quantity;
+  const isLastTurn = params.turnNumber >= params.maxTurns;
+  if (isLastTurn) return true;
+  if (pnl >= 60) return true;
+  if (pnl <= -45) return true;
+  return false;
+}
+
+function settleCpuOpenPositions(matchId: string, cpuUserId: string, closePrice: number, turnNumber: number, maxTurns: number) {
+  const cpuOpen = listPositions(matchId, cpuUserId).filter((p) => p.status === "OPEN");
+  const settled = [];
+  for (const p of cpuOpen) {
+    if (
+      shouldCpuClosePosition({
+        entryPrice: Number(p.entryPrice),
+        closePrice,
+        side: p.side,
+        quantity: Number(p.quantity ?? 0),
+        turnNumber,
+        maxTurns
+      })
+    ) {
+      const closed = closePosition({ positionId: p.id, closePrice, closeTurn: turnNumber });
+      if (closed) settled.push(closed.id);
+    }
+  }
+  return settled;
 }
 
 export async function resolveTurn(input: ResolveTurnInput) {
@@ -326,6 +364,22 @@ export async function resolveTurn(input: ResolveTurnInput) {
       entryPrice: close,
       quantity: Math.max(1, cpuEffectiveAmount),
       entryTurn: match.turnNumber
+    });
+  }
+  const cpuSettledIds = settleCpuOpenPositions(
+    match.id,
+    cpu.userId,
+    close,
+    match.turnNumber,
+    match.maxTurns
+  );
+  if (cpuSettledIds.length > 0) {
+    auditLog("CPU_POSITIONS_SETTLED", {
+      matchId: match.id,
+      turnNumber: match.turnNumber,
+      cpuUserId: cpu.userId,
+      settledCount: cpuSettledIds.length,
+      settledPositionIds: cpuSettledIds
     });
   }
 
