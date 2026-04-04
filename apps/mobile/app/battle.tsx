@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Button, ScrollView, Text, View } from "react-native";
+import { Button, LayoutChangeEvent, ScrollView, Text, View } from "react-native";
 import CandlestickChart from "../components/CandlestickChart";
 import { API_BASE_URL, API_BASE_URL_SOURCE } from "../constants/config";
 import { closePosition, fetchPositions, sendAction, startCpuMatch } from "../services/api";
@@ -64,6 +64,7 @@ export default function BattleScreen() {
   const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
   const [chartTapPrice, setChartTapPrice] = useState<number | null>(null);
   const [startLog, setStartLog] = useState<string[]>([]);
+  const [lotSliderWidth, setLotSliderWidth] = useState(1);
 
   function toUserFacingError(e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
@@ -86,12 +87,9 @@ export default function BattleScreen() {
   const opponentPlayer = state?.players?.find((p: any) => p.userId !== SELF_USER_ID);
 
   const avatarLevelBonus = 0; // 将来: アバターレベルに応じて加算
+  const minLot = 50;
+  const lotStep = 50;
   const maxLot = 1000 + avatarLevelBonus;
-  const lotOptions = useMemo(() => {
-    const values: number[] = [];
-    for (let lot = 50; lot <= maxLot; lot += 50) values.push(lot);
-    return values;
-  }, [maxLot]);
 
   useEffect(() => {
     if (amount > maxLot) setAmount(maxLot);
@@ -290,16 +288,37 @@ export default function BattleScreen() {
 
   async function settleAllOpenPositions() {
     try {
-      const openPositions = positions.filter((p) => p.status === "OPEN");
+      const openPositions = positions.filter((p) => p.status === "OPEN" && p.userId === (selfPlayer?.userId ?? SELF_USER_ID));
       for (const p of openPositions) {
         await closePosition(String(p.id), currentPrice, Number(state?.turnNumber ?? 1));
       }
-      setNotice(`オール決済しました（${openPositions.length}件）`);
+      setNotice(`自分のポジションをオール決済しました（${openPositions.length}件）`);
       await refreshPositions();
     } catch (e) {
       setError(toUserFacingError(e));
     }
   }
+
+  function clampLot(lot: number) {
+    return Math.max(minLot, Math.min(maxLot, lot));
+  }
+
+  function snapLot(lot: number) {
+    const snapped = Math.round(clampLot(lot) / lotStep) * lotStep;
+    return clampLot(snapped);
+  }
+
+  function handleLotSliderLayout(e: LayoutChangeEvent) {
+    setLotSliderWidth(Math.max(1, e.nativeEvent.layout.width));
+  }
+
+  function handleLotSliderX(locationX: number) {
+    const ratio = Math.max(0, Math.min(1, locationX / lotSliderWidth));
+    const rawLot = minLot + ratio * (maxLot - minLot);
+    setAmount(snapLot(rawLot));
+  }
+
+  const lotRatio = (amount - minLot) / Math.max(1, maxLot - minLot);
 
   return (
     <ScrollView contentContainerStyle={{ gap: 10, padding: 20 }} style={{ flex: 1 }}>
@@ -336,14 +355,32 @@ export default function BattleScreen() {
         <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 8 }}>
           <Text style={{ fontWeight: "700" }}>チャートタップ操作</Text>
           <Text>タップ価格: {chartTapPrice.toFixed(2)}</Text>
-          <Text>ロット選択（最大 {maxLot}）</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator style={{ maxHeight: 44 }}>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {lotOptions.map((lot) => (
-                <Button key={lot} title={lot === amount ? `●${lot}` : String(lot)} onPress={() => setAmount(lot)} />
-              ))}
+          <Text>ロット: {amount}（{minLot} - {maxLot}）</Text>
+          <View
+            onLayout={handleLotSliderLayout}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={(e) => handleLotSliderX(e.nativeEvent.locationX)}
+            onResponderMove={(e) => handleLotSliderX(e.nativeEvent.locationX)}
+            style={{ height: 28, justifyContent: "center" }}
+          >
+            <View style={{ height: 8, borderRadius: 999, backgroundColor: "#cbd5e1", overflow: "hidden" }}>
+              <View style={{ width: `${lotRatio * 100}%`, height: "100%", backgroundColor: "#2563eb" }} />
             </View>
-          </ScrollView>
+            <View
+              style={{
+                position: "absolute",
+                left: `${lotRatio * 100}%`,
+                marginLeft: -8,
+                width: 16,
+                height: 16,
+                borderRadius: 999,
+                backgroundColor: "#1d4ed8",
+                borderWidth: 2,
+                borderColor: "#ffffff"
+              }}
+            />
+          </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
             <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
