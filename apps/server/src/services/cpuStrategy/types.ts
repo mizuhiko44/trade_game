@@ -22,6 +22,7 @@ export type ChartPattern = {
 };
 
 export type CpuDifficulty = "easy" | "normal" | "hard";
+export type CpuStyle = "trend_follower" | "contrarian";
 
 export type CpuAction = "buy" | "sell" | "hold" | "item";
 
