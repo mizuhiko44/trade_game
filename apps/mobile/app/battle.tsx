@@ -225,6 +225,19 @@ export default function BattleScreen() {
     }
   }, [isUserTurn, remainingSec]);
 
+  useEffect(() => {
+    const turnNumber = Number(state?.turnNumber ?? 1);
+    const maxTurns = Number(state?.maxTurns ?? 5);
+    if (state?.status === "FINISHED") return;
+    if (turnNumber < maxTurns) return;
+    if (lastTurnPopupShownAtTurn === turnNumber) return;
+
+    setShowLastTurnPopup(true);
+    setLastTurnPopupShownAtTurn(turnNumber);
+    const timer = setTimeout(() => setShowLastTurnPopup(false), 3000);
+    return () => clearTimeout(timer);
+  }, [lastTurnPopupShownAtTurn, state?.maxTurns, state?.status, state?.turnNumber]);
+
   const executionMarkers: Array<{
     id: string;
     positionId: string;
@@ -336,7 +349,7 @@ export default function BattleScreen() {
     <ScrollView contentContainerStyle={{ gap: 10, padding: 20 }} style={{ flex: 1 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>対戦画面</Text>
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
-      <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
+      <Text style={{ color: "#1d4ed8" }}>{`${turnInfo} / ローソク足内バトル ${Number(state?.subturn ?? 1)}/3`}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
       <View style={{ borderWidth: 2, borderColor: "#f59e0b", backgroundColor: "#fef3c7", borderRadius: 12, padding: 10, gap: 4 }}>
         <Text style={{ fontWeight: "700", color: "#92400e" }}>{popupLine1}</Text>
@@ -487,6 +500,26 @@ export default function BattleScreen() {
           <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
         ))}
       </View>
+      {showLastTurnPopup ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 24,
+            left: 20,
+            right: 20,
+            backgroundColor: "#fef3c7",
+            borderColor: "#f59e0b",
+            borderWidth: 2,
+            borderRadius: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 14
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "800", color: "#b45309", textAlign: "center" }}>
+            🎉 ラストターン突入！全力でいこう！
+          </Text>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
