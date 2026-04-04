@@ -62,18 +62,26 @@ function decideCoreAction(difficulty: CpuDifficulty, context: BattleContext): Cp
       action: "item",
       amount: 0,
       itemId: "PRICE_SPIKE",
-      reason: `item_finisher_${difficulty}`
+      reason: `item_finisher_${difficulty}_turnsLeft=${turnsLeft}`
     };
   }
 
   const directionalThreshold = difficulty === "easy" ? 0.06 : difficulty === "normal" ? 0.045 : 0.03;
 
   if (directionalScore > directionalThreshold) {
-    return { action: "buy", amount: baseAmount, reason: `bullish_score_${directionalScore.toFixed(2)}` };
+    return {
+      action: "buy",
+      amount: baseAmount,
+      reason: `bullish_ds=${directionalScore.toFixed(3)}_th=${directionalThreshold.toFixed(3)}`
+    };
   }
 
   if (directionalScore < -directionalThreshold) {
-    return { action: "sell", amount: baseAmount, reason: `bearish_score_${directionalScore.toFixed(2)}` };
+    return {
+      action: "sell",
+      amount: baseAmount,
+      reason: `bearish_ds=${directionalScore.toFixed(3)}_th=${directionalThreshold.toFixed(3)}`
+    };
   }
 
   const neutralTradeChance = difficulty === "easy" ? 0.22 : difficulty === "normal" ? 0.38 : 0.55;
@@ -84,12 +92,16 @@ function decideCoreAction(difficulty: CpuDifficulty, context: BattleContext): Cp
     return {
       action,
       amount: clamp(conservativeAmount, CPU_STRATEGY_CONSTANTS.minTradeAmount, CPU_STRATEGY_CONSTANTS.maxTradeAmount),
-      reason: `neutral_follow_${fallbackBias.toFixed(3)}`
+      reason: `neutral_follow_bias=${fallbackBias.toFixed(3)}_ds=${directionalScore.toFixed(3)}`
     };
   }
 
   const conservative = difficulty === "hard" ? Math.round(baseAmount * 0.55) : Math.round(baseAmount * 0.4);
-  return { action: "hold", amount: conservative, reason: `neutral_hold_${directionalScore.toFixed(2)}` };
+  return {
+    action: "hold",
+    amount: conservative,
+    reason: `neutral_hold_ds=${directionalScore.toFixed(3)}_th=${directionalThreshold.toFixed(3)}`
+  };
 }
 
 export function decideCpuAction(difficulty: CpuDifficulty, context: BattleContext): CpuDecision {

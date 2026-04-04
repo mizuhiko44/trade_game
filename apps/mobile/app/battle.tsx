@@ -309,7 +309,9 @@ export default function BattleScreen() {
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
       <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
-      <Text>ターン: {state?.turnNumber ?? 1}</Text>
+      <Text>
+        ターン: {state?.turnNumber ?? 1}（ローソク足内バトル {Number(state?.subturn ?? 1)}/3）
+      </Text>
       <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
 
       {state?.status === "FINISHED" ? (
@@ -351,10 +353,10 @@ export default function BattleScreen() {
             <Button title="Hold" onPress={() => action("HOLD")} />
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <Button title="⚡Price" onPress={() => useItem("PRICE_SPIKE")} />
-            <Button title="🛡Shield" onPress={() => useItem("SHIELD")} />
-            <Button title="💥Force" onPress={() => useItem("DOUBLE_FORCE")} />
-            <Button title="🧹オール決済" onPress={settleAllOpenPositions} />
+            <Button title="⚡" onPress={() => useItem("PRICE_SPIKE")} />
+            <Button title="🛡" onPress={() => useItem("SHIELD")} />
+            <Button title="💥" onPress={() => useItem("DOUBLE_FORCE")} />
+            <Button title="🧹" onPress={settleAllOpenPositions} />
           </View>
         </View>
       ) : null}

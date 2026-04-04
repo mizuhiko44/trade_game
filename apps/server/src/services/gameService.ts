@@ -183,6 +183,19 @@ export async function resolveTurn(input: ResolveTurnInput) {
     amount: clamp(cpuDecision.amount, 0, GAME_CONFIG.maxInvestmentPerTurn),
     itemType: cpuDecision.itemId === "PRICE_SPIKE" ? ItemType.PRICE_SPIKE : undefined
   };
+  auditLog("CPU_DECISION_EVALUATED", {
+    matchId: match.id,
+    turnNumber: match.turnNumber,
+    subturnBeforeResolve: (matchSubturnCounts.get(match.id) ?? 0) + 1,
+    cpuAction: cpuDecision.action,
+    cpuAmountRequested: cpuDecision.amount,
+    cpuAmountApplied: botMove.amount,
+    cpuItem: cpuDecision.itemId ?? null,
+    cpuReason: cpuDecision.reason,
+    currentPrice: battleContext.currentPrice,
+    initialPrice: battleContext.initialPrice,
+    priceHistoryCount: battleContext.priceHistory.length
+  });
 
   const effectState = matchEffects.get(match.id) ?? { shieldUntilTurn: {}, doubleForceUntilTurn: {} };
   const playerDoubleForce = effectState.doubleForceUntilTurn[player.side] === match.turnNumber ? 2 : 1;
@@ -357,6 +370,10 @@ export async function resolveTurn(input: ResolveTurnInput) {
     turnNumber: match.turnNumber,
     subturn: currentSubturn,
     actionType: input.action.actionType,
+    playerAmount: playerEffectiveAmount,
+    cpuActionType: botMove.actionType,
+    cpuAmount: cpuEffectiveAmount,
+    cpuReason: cpuDecision.reason,
     buyTotal,
     sellTotal,
     close
