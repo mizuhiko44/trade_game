@@ -307,7 +307,6 @@ export default function BattleScreen() {
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
       <Text style={{ color: "#1d4ed8" }}>{`${turnInfo} / ローソク足内バトル ${Number(state?.subturn ?? 1)}/3`}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
-      <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
       <Text>
         ターン: {state?.turnNumber ?? 1}（ローソク足内バトル {Number(state?.subturn ?? 1)}/3）
@@ -315,9 +314,7 @@ export default function BattleScreen() {
       <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
 
       {state?.status === "FINISHED" ? (
-        <Text style={{ fontWeight: "700" }}>
-          損益勝者: {pnlBySide.BUY === pnlBySide.SELL ? "DRAW" : pnlBySide.BUY > pnlBySide.SELL ? "BUY" : "SELL"}
-        </Text>
+        <Text style={{ fontWeight: "700" }}>損益勝者: {selfPnl >= opponentPnl ? "自分" : "相手"}</Text>
       ) : null}
       <Text>
         自分: {AVATAR_PRESETS[selfPlayer?.userId ?? "demo-user"] ?? "🙂"} 損益={selfPnl.toFixed(2)} {selfResultLabel} / 相手:{" "}
@@ -429,6 +426,7 @@ export default function BattleScreen() {
         ))}
       </View>
       <View style={{ borderTopWidth: 1, borderColor: "#cbd5e1", paddingTop: 8, marginTop: 8 }}>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>Match: {matchId}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>API: {API_BASE_URL}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>API Source: {API_BASE_URL_SOURCE}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>UI Revision: {UI_REVISION}</Text>

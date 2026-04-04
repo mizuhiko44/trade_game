@@ -313,22 +313,30 @@ export async function resolveTurn(input: ResolveTurnInput) {
 
   let status: MatchStatus = MatchStatus.ACTIVE;
   let winnerSide: Side | null = null;
+  const isTargetReachMode = GAME_CONFIG.victoryConditionMode === "TARGET_REACH";
+  const reachedUpper = close >= Number(match.targetUpperPrice);
+  const reachedLower = close <= Number(match.targetLowerPrice);
+  const reachedTurnLimit = match.turnNumber >= match.maxTurns && currentSubturn >= 3;
 
-  if (close >= Number(match.targetUpperPrice)) {
-    status = MatchStatus.FINISHED;
-  } else if (close <= Number(match.targetLowerPrice)) {
-    status = MatchStatus.FINISHED;
-  } else if (match.turnNumber >= match.maxTurns && currentSubturn >= 3) {
+  if (isTargetReachMode) {
+    if (reachedUpper || reachedLower || reachedTurnLimit) {
+      status = MatchStatus.FINISHED;
+    }
+  } else if (reachedTurnLimit) {
     status = MatchStatus.FINISHED;
   }
 
   if (status === MatchStatus.FINISHED) {
     closeAllOpenPositions(match.id, close, match.turnNumber);
-    const pnlBySide = calculatePnlBySide(
-      match.id,
-      new Map(match.players.map((p) => [p.userId, p.side]))
-    );
-    winnerSide = pnlBySide.BUY === pnlBySide.SELL ? null : pnlBySide.BUY > pnlBySide.SELL ? Side.BUY : Side.SELL;
+    if (isTargetReachMode && (reachedUpper || reachedLower)) {
+      winnerSide = reachedUpper ? Side.BUY : Side.SELL;
+    } else {
+      const pnlBySide = calculatePnlBySide(
+        match.id,
+        new Map(match.players.map((p) => [p.userId, p.side]))
+      );
+      winnerSide = pnlBySide.BUY === pnlBySide.SELL ? null : pnlBySide.BUY > pnlBySide.SELL ? Side.BUY : Side.SELL;
+    }
   }
 
   const nextTurnNumber = status === MatchStatus.FINISHED ? match.turnNumber : currentSubturn >= 3 ? match.turnNumber + 1 : match.turnNumber;
@@ -374,6 +382,10 @@ export async function resolveTurn(input: ResolveTurnInput) {
     cpuActionType: botMove.actionType,
     cpuAmount: cpuEffectiveAmount,
     cpuReason: cpuDecision.reason,
+    victoryConditionMode: GAME_CONFIG.victoryConditionMode,
+    reachedUpper,
+    reachedLower,
+    reachedTurnLimit,
     buyTotal,
     sellTotal,
     close
