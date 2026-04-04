@@ -183,6 +183,19 @@ export async function resolveTurn(input: ResolveTurnInput) {
     amount: clamp(cpuDecision.amount, 0, GAME_CONFIG.maxInvestmentPerTurn),
     itemType: cpuDecision.itemId === "PRICE_SPIKE" ? ItemType.PRICE_SPIKE : undefined
   };
+  auditLog("CPU_DECISION_EVALUATED", {
+    matchId: match.id,
+    turnNumber: match.turnNumber,
+    subturnBeforeResolve: (matchSubturnCounts.get(match.id) ?? 0) + 1,
+    cpuAction: cpuDecision.action,
+    cpuAmountRequested: cpuDecision.amount,
+    cpuAmountApplied: botMove.amount,
+    cpuItem: cpuDecision.itemId ?? null,
+    cpuReason: cpuDecision.reason,
+    currentPrice: battleContext.currentPrice,
+    initialPrice: battleContext.initialPrice,
+    priceHistoryCount: battleContext.priceHistory.length
+  });
 
   const effectState = matchEffects.get(match.id) ?? { shieldUntilTurn: {}, doubleForceUntilTurn: {} };
   const playerDoubleForce = effectState.doubleForceUntilTurn[player.side] === match.turnNumber ? 2 : 1;
@@ -300,22 +313,30 @@ export async function resolveTurn(input: ResolveTurnInput) {
 
   let status: MatchStatus = MatchStatus.ACTIVE;
   let winnerSide: Side | null = null;
+  const isTargetReachMode = GAME_CONFIG.victoryConditionMode === "TARGET_REACH";
+  const reachedUpper = close >= Number(match.targetUpperPrice);
+  const reachedLower = close <= Number(match.targetLowerPrice);
+  const reachedTurnLimit = match.turnNumber >= match.maxTurns && currentSubturn >= 3;
 
-  if (close >= Number(match.targetUpperPrice)) {
-    status = MatchStatus.FINISHED;
-  } else if (close <= Number(match.targetLowerPrice)) {
-    status = MatchStatus.FINISHED;
-  } else if (match.turnNumber >= match.maxTurns && currentSubturn >= 3) {
+  if (isTargetReachMode) {
+    if (reachedUpper || reachedLower || reachedTurnLimit) {
+      status = MatchStatus.FINISHED;
+    }
+  } else if (reachedTurnLimit) {
     status = MatchStatus.FINISHED;
   }
 
   if (status === MatchStatus.FINISHED) {
     closeAllOpenPositions(match.id, close, match.turnNumber);
-    const pnlBySide = calculatePnlBySide(
-      match.id,
-      new Map(match.players.map((p) => [p.userId, p.side]))
-    );
-    winnerSide = pnlBySide.BUY === pnlBySide.SELL ? null : pnlBySide.BUY > pnlBySide.SELL ? Side.BUY : Side.SELL;
+    if (isTargetReachMode && (reachedUpper || reachedLower)) {
+      winnerSide = reachedUpper ? Side.BUY : Side.SELL;
+    } else {
+      const pnlBySide = calculatePnlBySide(
+        match.id,
+        new Map(match.players.map((p) => [p.userId, p.side]))
+      );
+      winnerSide = pnlBySide.BUY === pnlBySide.SELL ? null : pnlBySide.BUY > pnlBySide.SELL ? Side.BUY : Side.SELL;
+    }
   }
 
   const nextTurnNumber = status === MatchStatus.FINISHED ? match.turnNumber : currentSubturn >= 3 ? match.turnNumber + 1 : match.turnNumber;
@@ -357,6 +378,14 @@ export async function resolveTurn(input: ResolveTurnInput) {
     turnNumber: match.turnNumber,
     subturn: currentSubturn,
     actionType: input.action.actionType,
+    playerAmount: playerEffectiveAmount,
+    cpuActionType: botMove.actionType,
+    cpuAmount: cpuEffectiveAmount,
+    cpuReason: cpuDecision.reason,
+    victoryConditionMode: GAME_CONFIG.victoryConditionMode,
+    reachedUpper,
+    reachedLower,
+    reachedTurnLimit,
     buyTotal,
     sellTotal,
     close
