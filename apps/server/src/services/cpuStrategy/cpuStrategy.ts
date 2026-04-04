@@ -1,6 +1,6 @@
 import { CPU_STRATEGY_CONSTANTS, PRICE_SPIKE_ITEM_WEIGHT } from "./constants";
 import { detectPatternsFromPriceHistory } from "./patternDetector";
-import { BattleContext, CpuDecision, CpuDifficulty } from "./types";
+import { BattleContext, CpuDecision, CpuDifficulty, CpuStyle } from "./types";
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -20,7 +20,7 @@ function scoreActionByBias(bias: string): number {
   return 0;
 }
 
-function decideCoreAction(difficulty: CpuDifficulty, context: BattleContext): CpuDecision {
+function decideCoreAction(difficulty: CpuDifficulty, style: CpuStyle, context: BattleContext): CpuDecision {
   const baseAmount = calcBaseAmount(difficulty, context);
   const prices =
     context.priceHistory.length > 1
@@ -29,6 +29,10 @@ function decideCoreAction(difficulty: CpuDifficulty, context: BattleContext): Cp
   const patterns = detectPatternsFromPriceHistory(prices);
 
   const momentum = (context.currentPrice - context.initialPrice) / Math.max(1, context.initialPrice);
+  const shortTrend =
+    prices.length >= 2
+      ? (prices[prices.length - 1] - prices[prices.length - 2]) / Math.max(1, prices[prices.length - 2])
+      : 0;
   const patternScore = patterns.reduce((sum, p) => {
     const fakePenalty = difficulty === "hard" && p.isFakeBreakRisk ? CPU_STRATEGY_CONSTANTS.fakeBreakPenalty : 0;
     return sum + (scoreActionByBias(p.pattern.cpuBias) - fakePenalty) * p.confidence;
@@ -38,7 +42,10 @@ function decideCoreAction(difficulty: CpuDifficulty, context: BattleContext): Cp
   const upDistance = Math.abs(context.targetUpPrice - context.currentPrice);
   const downDistance = Math.abs(context.currentPrice - context.targetDownPrice);
 
-  let directionalScore = patternScore + momentum * 2;
+  const styleAdjustedPatternScore = style === "contrarian" ? -patternScore * 0.9 : patternScore;
+  const styleMomentumWeight = style === "contrarian" ? -3.2 : 5;
+  const styleTrendWeight = style === "contrarian" ? -4.4 : 7;
+  let directionalScore = styleAdjustedPatternScore + momentum * styleMomentumWeight + shortTrend * styleTrendWeight;
 
   if (difficulty === "hard") {
     if (turnsLeft <= 2) {
@@ -50,7 +57,7 @@ function decideCoreAction(difficulty: CpuDifficulty, context: BattleContext): Cp
   }
 
   if (difficulty === "easy" && Math.random() < 0.28) {
-    return { action: "hold", amount: 0, reason: "easy_random_hold" };
+    return { action: "hold", amount: 0, reason: `${style}_easy_random_hold` };
   }
 
   if (difficulty !== "easy" && Math.random() < PRICE_SPIKE_ITEM_WEIGHT[difficulty] && turnsLeft <= 4) {
@@ -58,22 +65,48 @@ function decideCoreAction(difficulty: CpuDifficulty, context: BattleContext): Cp
       action: "item",
       amount: 0,
       itemId: "PRICE_SPIKE",
-      reason: `item_finisher_${difficulty}`
+      reason: `${style}_item_finisher_${difficulty}_turnsLeft=${turnsLeft}`
     };
   }
 
-  if (directionalScore > 0.2) {
-    return { action: "buy", amount: baseAmount, reason: `bullish_score_${directionalScore.toFixed(2)}` };
+  const directionalThreshold = difficulty === "easy" ? 0.06 : difficulty === "normal" ? 0.045 : 0.03;
+
+  if (directionalScore > directionalThreshold) {
+    return {
+      action: "buy",
+      amount: baseAmount,
+      reason: `${style}_bullish_ds=${directionalScore.toFixed(3)}_th=${directionalThreshold.toFixed(3)}`
+    };
   }
 
-  if (directionalScore < -0.2) {
-    return { action: "sell", amount: baseAmount, reason: `bearish_score_${directionalScore.toFixed(2)}` };
+  if (directionalScore < -directionalThreshold) {
+    return {
+      action: "sell",
+      amount: baseAmount,
+      reason: `${style}_bearish_ds=${directionalScore.toFixed(3)}_th=${directionalThreshold.toFixed(3)}`
+    };
   }
 
-  const conservative = difficulty === "hard" ? Math.round(baseAmount * 0.6) : Math.round(baseAmount * 0.45);
-  return { action: "hold", amount: conservative, reason: `neutral_score_${directionalScore.toFixed(2)}` };
+  const neutralTradeChance = difficulty === "easy" ? 0.22 : difficulty === "normal" ? 0.38 : 0.55;
+  if (Math.random() < neutralTradeChance) {
+    const fallbackBias = momentum + shortTrend;
+    const action = fallbackBias >= 0 ? "buy" : "sell";
+    const conservativeAmount = difficulty === "hard" ? Math.round(baseAmount * 0.7) : Math.round(baseAmount * 0.5);
+    return {
+      action,
+      amount: clamp(conservativeAmount, CPU_STRATEGY_CONSTANTS.minTradeAmount, CPU_STRATEGY_CONSTANTS.maxTradeAmount),
+      reason: `${style}_neutral_follow_bias=${fallbackBias.toFixed(3)}_ds=${directionalScore.toFixed(3)}`
+    };
+  }
+
+  const conservative = difficulty === "hard" ? Math.round(baseAmount * 0.55) : Math.round(baseAmount * 0.4);
+  return {
+    action: "hold",
+    amount: conservative,
+    reason: `${style}_neutral_hold_ds=${directionalScore.toFixed(3)}_th=${directionalThreshold.toFixed(3)}`
+  };
 }
 
-export function decideCpuAction(difficulty: CpuDifficulty, context: BattleContext): CpuDecision {
-  return decideCoreAction(difficulty, context);
+export function decideCpuAction(difficulty: CpuDifficulty, style: CpuStyle, context: BattleContext): CpuDecision {
+  return decideCoreAction(difficulty, style, context);
 }
