@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import { API_BASE_URL, USER_ID } from "../constants/config";
+import { API_BASE_URL, API_BASE_URL_SOURCE, USER_ID } from "../constants/config";
 
 const DEBUG_API_LOG = true;
 
@@ -17,6 +17,13 @@ function apiLog(message: string, payload?: unknown) {
     return;
   }
   console.log(`[API] ${message}`, payload);
+}
+
+apiLog("base_url_resolved", { API_BASE_URL, API_BASE_URL_SOURCE, platform: Platform.OS });
+if (API_BASE_URL_SOURCE === "env-db-port-rewritten-to-api-port") {
+  apiLog("base_url_warning", {
+    message: "EXPO_PUBLIC_API_BASE_URL appears to use DB port 5432. Rewrote to API port 4000."
+  });
 }
 
 async function parseJsonOrThrow(res: Response, traceId: string) {
