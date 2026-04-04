@@ -307,30 +307,14 @@ export default function BattleScreen() {
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
       <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
-      <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
-      <Text>ターン: {state?.turnNumber ?? 1}</Text>
-      <Text>ローソク足内バトル: {Number(state?.subturn ?? 1)}/3</Text>
-      <Text>ロット選択（最大 {maxLot}）</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator style={{ maxHeight: 44 }}>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {lotOptions.map((lot) => (
-            <Button key={lot} title={lot === amount ? `●${lot}` : String(lot)} onPress={() => setAmount(lot)} />
-          ))}
-        </View>
-      </ScrollView>
+      <Text>
+        ターン: {state?.turnNumber ?? 1}（ローソク足内バトル {Number(state?.subturn ?? 1)}/3）
+      </Text>
       <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        <Button title="⚡Price" onPress={() => useItem("PRICE_SPIKE")} />
-        <Button title="🛡Shield" onPress={() => useItem("SHIELD")} />
-        <Button title="💥Force" onPress={() => useItem("DOUBLE_FORCE")} />
-        <Button title="🧹オール決済" onPress={settleAllOpenPositions} />
-      </View>
 
       {state?.status === "FINISHED" ? (
-        <Text style={{ fontWeight: "700" }}>
-          損益勝者: {pnlBySide.BUY === pnlBySide.SELL ? "DRAW" : pnlBySide.BUY > pnlBySide.SELL ? "BUY" : "SELL"}
-        </Text>
+        <Text style={{ fontWeight: "700" }}>損益勝者: {selfPnl >= opponentPnl ? "自分" : "相手"}</Text>
       ) : null}
       <Text>
         自分: {AVATAR_PRESETS[selfPlayer?.userId ?? "demo-user"] ?? "🙂"} 損益={selfPnl.toFixed(2)} {selfResultLabel} / 相手:{" "}
@@ -349,13 +333,27 @@ export default function BattleScreen() {
         }}
       />
       {chartTapPrice !== null ? (
-        <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 6 }}>
+        <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 8 }}>
           <Text style={{ fontWeight: "700" }}>チャートタップ操作</Text>
           <Text>タップ価格: {chartTapPrice.toFixed(2)}</Text>
+          <Text>ロット選択（最大 {maxLot}）</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator style={{ maxHeight: 44 }}>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {lotOptions.map((lot) => (
+                <Button key={lot} title={lot === amount ? `●${lot}` : String(lot)} onPress={() => setAmount(lot)} />
+              ))}
+            </View>
+          </ScrollView>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
             <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
             <Button title="Hold" onPress={() => action("HOLD")} />
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <Button title="⚡" onPress={() => useItem("PRICE_SPIKE")} />
+            <Button title="🛡" onPress={() => useItem("SHIELD")} />
+            <Button title="💥" onPress={() => useItem("DOUBLE_FORCE")} />
+            <Button title="🧹" onPress={settleAllOpenPositions} />
           </View>
         </View>
       ) : null}
@@ -428,6 +426,7 @@ export default function BattleScreen() {
         ))}
       </View>
       <View style={{ borderTopWidth: 1, borderColor: "#cbd5e1", paddingTop: 8, marginTop: 8 }}>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>Match: {matchId}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>API: {API_BASE_URL}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>API Source: {API_BASE_URL_SOURCE}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>UI Revision: {UI_REVISION}</Text>
