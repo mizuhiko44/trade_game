@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Button, ScrollView, Text, View } from "react-native";
+import { Button, LayoutChangeEvent, ScrollView, Text, View } from "react-native";
 import CandlestickChart from "../components/CandlestickChart";
 import { API_BASE_URL, API_BASE_URL_SOURCE } from "../constants/config";
 import { closePosition, fetchPositions, sendAction, startCpuMatch } from "../services/api";
@@ -64,6 +64,9 @@ export default function BattleScreen() {
   const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
   const [chartTapPrice, setChartTapPrice] = useState<number | null>(null);
   const [startLog, setStartLog] = useState<string[]>([]);
+  const [lotSliderWidth, setLotSliderWidth] = useState(1);
+  const [showLastTurnPopup, setShowLastTurnPopup] = useState(false);
+  const [lastTurnPopupShownAtTurn, setLastTurnPopupShownAtTurn] = useState<number | null>(null);
 
   function toUserFacingError(e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
@@ -86,12 +89,9 @@ export default function BattleScreen() {
   const opponentPlayer = state?.players?.find((p: any) => p.userId !== SELF_USER_ID);
 
   const avatarLevelBonus = 0; // 将来: アバターレベルに応じて加算
+  const minLot = 50;
+  const lotStep = 50;
   const maxLot = 1000 + avatarLevelBonus;
-  const lotOptions = useMemo(() => {
-    const values: number[] = [];
-    for (let lot = 50; lot <= maxLot; lot += 50) values.push(lot);
-    return values;
-  }, [maxLot]);
 
   useEffect(() => {
     if (amount > maxLot) setAmount(maxLot);
@@ -227,6 +227,19 @@ export default function BattleScreen() {
     }
   }, [isUserTurn, remainingSec]);
 
+  useEffect(() => {
+    const turnNumber = Number(state?.turnNumber ?? 1);
+    const maxTurns = Number(state?.maxTurns ?? 5);
+    if (state?.status === "FINISHED") return;
+    if (turnNumber < maxTurns) return;
+    if (lastTurnPopupShownAtTurn === turnNumber) return;
+
+    setShowLastTurnPopup(true);
+    setLastTurnPopupShownAtTurn(turnNumber);
+    const timer = setTimeout(() => setShowLastTurnPopup(false), 3000);
+    return () => clearTimeout(timer);
+  }, [lastTurnPopupShownAtTurn, state?.maxTurns, state?.status, state?.turnNumber]);
+
   const executionMarkers: Array<{
     id: string;
     positionId: string;
@@ -290,16 +303,37 @@ export default function BattleScreen() {
 
   async function settleAllOpenPositions() {
     try {
-      const openPositions = positions.filter((p) => p.status === "OPEN");
+      const openPositions = positions.filter((p) => p.status === "OPEN" && p.userId === (selfPlayer?.userId ?? SELF_USER_ID));
       for (const p of openPositions) {
         await closePosition(String(p.id), currentPrice, Number(state?.turnNumber ?? 1));
       }
-      setNotice(`オール決済しました（${openPositions.length}件）`);
+      setNotice(`自分のポジションをオール決済しました（${openPositions.length}件）`);
       await refreshPositions();
     } catch (e) {
       setError(toUserFacingError(e));
     }
   }
+
+  function clampLot(lot: number) {
+    return Math.max(minLot, Math.min(maxLot, lot));
+  }
+
+  function snapLot(lot: number) {
+    const snapped = Math.round(clampLot(lot) / lotStep) * lotStep;
+    return clampLot(snapped);
+  }
+
+  function handleLotSliderLayout(e: LayoutChangeEvent) {
+    setLotSliderWidth(Math.max(1, e.nativeEvent.layout.width));
+  }
+
+  function handleLotSliderX(locationX: number) {
+    const ratio = Math.max(0, Math.min(1, locationX / lotSliderWidth));
+    const rawLot = minLot + ratio * (maxLot - minLot);
+    setAmount(snapLot(rawLot));
+  }
+
+  const lotRatio = (amount - minLot) / Math.max(1, maxLot - minLot);
 
   return (
     <ScrollView contentContainerStyle={{ gap: 10, padding: 20 }} style={{ flex: 1 }}>
@@ -307,30 +341,12 @@ export default function BattleScreen() {
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
       <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
-      <Text>Match: {matchId}</Text>
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
       <Text>ターン: {state?.turnNumber ?? 1}</Text>
-      <Text>ローソク足内バトル: {Number(state?.subturn ?? 1)}/3</Text>
-      <Text>ロット選択（最大 {maxLot}）</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator style={{ maxHeight: 44 }}>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {lotOptions.map((lot) => (
-            <Button key={lot} title={lot === amount ? `●${lot}` : String(lot)} onPress={() => setAmount(lot)} />
-          ))}
-        </View>
-      </ScrollView>
       <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-        <Button title="⚡Price" onPress={() => useItem("PRICE_SPIKE")} />
-        <Button title="🛡Shield" onPress={() => useItem("SHIELD")} />
-        <Button title="💥Force" onPress={() => useItem("DOUBLE_FORCE")} />
-        <Button title="🧹オール決済" onPress={settleAllOpenPositions} />
-      </View>
 
       {state?.status === "FINISHED" ? (
-        <Text style={{ fontWeight: "700" }}>
-          損益勝者: {pnlBySide.BUY === pnlBySide.SELL ? "DRAW" : pnlBySide.BUY > pnlBySide.SELL ? "BUY" : "SELL"}
-        </Text>
+        <Text style={{ fontWeight: "700" }}>損益勝者: {selfPnl >= opponentPnl ? "自分" : "相手"}</Text>
       ) : null}
       <Text>
         自分: {AVATAR_PRESETS[selfPlayer?.userId ?? "demo-user"] ?? "🙂"} 損益={selfPnl.toFixed(2)} {selfResultLabel} / 相手:{" "}
@@ -349,13 +365,45 @@ export default function BattleScreen() {
         }}
       />
       {chartTapPrice !== null ? (
-        <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 6 }}>
+        <View style={{ borderWidth: 1, borderRadius: 8, padding: 10, gap: 8 }}>
           <Text style={{ fontWeight: "700" }}>チャートタップ操作</Text>
           <Text>タップ価格: {chartTapPrice.toFixed(2)}</Text>
+          <Text>ロット: {amount}（{minLot} - {maxLot}）</Text>
+          <View
+            onLayout={handleLotSliderLayout}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={(e) => handleLotSliderX(e.nativeEvent.locationX)}
+            onResponderMove={(e) => handleLotSliderX(e.nativeEvent.locationX)}
+            style={{ height: 28, justifyContent: "center" }}
+          >
+            <View style={{ height: 8, borderRadius: 999, backgroundColor: "#cbd5e1", overflow: "hidden" }}>
+              <View style={{ width: `${lotRatio * 100}%`, height: "100%", backgroundColor: "#2563eb" }} />
+            </View>
+            <View
+              style={{
+                position: "absolute",
+                left: `${lotRatio * 100}%`,
+                marginLeft: -8,
+                width: 16,
+                height: 16,
+                borderRadius: 999,
+                backgroundColor: "#1d4ed8",
+                borderWidth: 2,
+                borderColor: "#ffffff"
+              }}
+            />
+          </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
             <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
             <Button title="Hold" onPress={() => action("HOLD")} />
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <Button title="⚡" onPress={() => useItem("PRICE_SPIKE")} />
+            <Button title="🛡" onPress={() => useItem("SHIELD")} />
+            <Button title="💥" onPress={() => useItem("DOUBLE_FORCE")} />
+            <Button title="🧹" onPress={settleAllOpenPositions} />
           </View>
         </View>
       ) : null}
@@ -428,6 +476,7 @@ export default function BattleScreen() {
         ))}
       </View>
       <View style={{ borderTopWidth: 1, borderColor: "#cbd5e1", paddingTop: 8, marginTop: 8 }}>
+        <Text style={{ fontSize: 12, color: "#64748b" }}>Match: {matchId}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>API: {API_BASE_URL}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>API Source: {API_BASE_URL_SOURCE}</Text>
         <Text style={{ fontSize: 12, color: "#64748b" }}>UI Revision: {UI_REVISION}</Text>
@@ -438,6 +487,26 @@ export default function BattleScreen() {
           <Text key={line} style={{ fontSize: 12, color: "#475569" }}>{line}</Text>
         ))}
       </View>
+      {showLastTurnPopup ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 24,
+            left: 20,
+            right: 20,
+            backgroundColor: "#fef3c7",
+            borderColor: "#f59e0b",
+            borderWidth: 2,
+            borderRadius: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 14
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "800", color: "#b45309", textAlign: "center" }}>
+            🎉 ラストターン突入！全力でいこう！
+          </Text>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
