@@ -12,7 +12,7 @@ import { auditLog } from "./auditLogService";
 import { calculatePnlBySide, closeAllOpenPositions, createPosition } from "./positionService";
 import { ResolveTurnInput, StartCpuMatchInput } from "../types/game";
 import { decideCpuAction } from "./cpuStrategy/cpuStrategy";
-import { BattleContext, CpuDifficulty } from "./cpuStrategy/types";
+import { BattleContext, CpuDifficulty, CpuStyle } from "./cpuStrategy/types";
 
 const prisma = new PrismaClient();
 
@@ -23,9 +23,22 @@ type MatchEffectState = {
 
 const matchEffects = new Map<string, MatchEffectState>();
 const matchSubturnCounts = new Map<string, number>();
+const matchCpuStyles = new Map<string, CpuStyle>();
 
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
+}
+
+function pickCpuStyle(): CpuStyle {
+  return Math.random() < 0.5 ? "trend_follower" : "contrarian";
+}
+
+function getOrInitCpuStyle(matchId: string): CpuStyle {
+  const existing = matchCpuStyles.get(matchId);
+  if (existing) return existing;
+  const style = pickCpuStyle();
+  matchCpuStyles.set(matchId, style);
+  return style;
 }
 
 export async function claimLoginBonus(userId: string) {
@@ -97,7 +110,10 @@ export async function startCpuMatch(input: StartCpuMatchInput) {
     },
     include: { players: true }
   });
+  const cpuStyle = pickCpuStyle();
+  matchCpuStyles.set(match.id, cpuStyle);
   auditLog("MATCH_CREATED_CPU", { matchId: match.id, userId: user.id, botLevel: input.botLevel });
+  auditLog("CPU_STYLE_ASSIGNED", { matchId: match.id, cpuStyle });
   return match;
 }
 
@@ -177,7 +193,8 @@ export async function resolveTurn(input: ResolveTurnInput) {
     lastActions: [],
     detectedPatterns: []
   };
-  const cpuDecision = decideCpuAction(mapBotLevel(match.botLevel ?? BotLevel.EASY), battleContext);
+  const cpuStyle = getOrInitCpuStyle(match.id);
+  const cpuDecision = decideCpuAction(mapBotLevel(match.botLevel ?? BotLevel.EASY), cpuStyle, battleContext);
   const botMove = {
     actionType: mapCpuActionToTurnAction(cpuDecision.action),
     amount: clamp(cpuDecision.amount, 0, GAME_CONFIG.maxInvestmentPerTurn),
@@ -191,6 +208,7 @@ export async function resolveTurn(input: ResolveTurnInput) {
     cpuAmountRequested: cpuDecision.amount,
     cpuAmountApplied: botMove.amount,
     cpuItem: cpuDecision.itemId ?? null,
+    cpuStyle,
     cpuReason: cpuDecision.reason,
     currentPrice: battleContext.currentPrice,
     initialPrice: battleContext.initialPrice,
@@ -358,6 +376,7 @@ export async function resolveTurn(input: ResolveTurnInput) {
 
   if (status === MatchStatus.FINISHED) {
     matchSubturnCounts.delete(match.id);
+    matchCpuStyles.delete(match.id);
     const isWin = winnerSide === player.side;
     await prisma.user.update({
       where: { id: player.userId },
@@ -381,6 +400,7 @@ export async function resolveTurn(input: ResolveTurnInput) {
     playerAmount: playerEffectiveAmount,
     cpuActionType: botMove.actionType,
     cpuAmount: cpuEffectiveAmount,
+    cpuStyle,
     cpuReason: cpuDecision.reason,
     victoryConditionMode: GAME_CONFIG.victoryConditionMode,
     reachedUpper,

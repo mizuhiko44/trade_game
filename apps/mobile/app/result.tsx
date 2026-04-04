@@ -18,11 +18,26 @@ export default function ResultScreen() {
   const summary = useMemo(() => {
     if (!turns.length) return null;
     const closes = turns.map((t) => Number(t.closePrice));
+    const firstClose = closes[0];
+    const lastClose = closes[closes.length - 1];
+    const netMove = lastClose - firstClose;
+    const keyTurn = turns.reduce(
+      (best, t) => {
+        const swing = Math.abs(Number(t.highPrice) - Number(t.lowPrice));
+        if (swing > best.swing) {
+          return { turnNumber: Number(t.turnNumber), swing };
+        }
+        return best;
+      },
+      { turnNumber: Number(turns[0]?.turnNumber ?? 1), swing: 0 }
+    );
+    const winnerText = winnerSide === "BUY" ? "上昇方向" : winnerSide === "SELL" ? "下落方向" : "拮抗";
     return {
       count: turns.length,
       high: Math.max(...closes).toFixed(2),
       low: Math.min(...closes).toFixed(2),
-      lastClose: closes[closes.length - 1].toFixed(2)
+      lastClose: lastClose.toFixed(2),
+      summaryText: `勝敗サマリ: ${winnerText}が優勢（値動き ${netMove >= 0 ? "+" : ""}${netMove.toFixed(2)} / 重要ターン T${keyTurn.turnNumber}）`
     };
   }, [turns]);
 
@@ -36,6 +51,7 @@ export default function ResultScreen() {
           <Text>ターン数: {summary.count}</Text>
           <Text>終値レンジ: High {summary.high} / Low {summary.low}</Text>
           <Text>最終終値: {summary.lastClose}</Text>
+          <Text>{summary.summaryText}</Text>
         </View>
       ) : null}
       <Text>報酬: 勝利100コイン / 敗北20コイン</Text>
