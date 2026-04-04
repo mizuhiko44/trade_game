@@ -305,7 +305,7 @@ export default function BattleScreen() {
     <ScrollView contentContainerStyle={{ gap: 10, padding: 20 }} style={{ flex: 1 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>対戦画面</Text>
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
-      <Text style={{ color: "#1d4ed8" }}>{turnInfo}</Text>
+      <Text style={{ color: "#1d4ed8" }}>{`${turnInfo} / ローソク足内バトル ${Number(state?.subturn ?? 1)}/3`}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
       <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
       <Text>
