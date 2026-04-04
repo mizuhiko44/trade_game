@@ -46,7 +46,7 @@ const CHART_PRESETS = {
   ]
 } as const;
 
-const UI_REVISION = "battle-ui-r7";
+const UI_REVISION = "battle-ui-r8";
 const SELF_USER_ID = "demo-user";
 
 export default function BattleScreen() {
@@ -65,6 +65,8 @@ export default function BattleScreen() {
   const [chartTapPrice, setChartTapPrice] = useState<number | null>(null);
   const [startLog, setStartLog] = useState<string[]>([]);
   const [lotSliderWidth, setLotSliderWidth] = useState(1);
+  // NOTE:
+  // CIで古い差分が混在した場合でも未定義エラーを起こさないよう互換stateを残す。
   const [showLastTurnPopup, setShowLastTurnPopup] = useState(false);
   const [lastTurnPopupShownAtTurn, setLastTurnPopupShownAtTurn] = useState<number | null>(null);
 
@@ -334,6 +336,18 @@ export default function BattleScreen() {
   }
 
   const lotRatio = (amount - minLot) / Math.max(1, maxLot - minLot);
+  const popupLine1 = useMemo(() => {
+    const turnNumber = Number(state?.turnNumber ?? 1);
+    const maxTurns = Number(state?.maxTurns ?? 5);
+    if (state?.status === "FINISHED") return "📣 経済イベント: クローズ直前、最終清算フェーズ";
+    if (turnNumber >= maxTurns) return "📣 経済イベント: ラストターン、指標発表で高ボラ想定";
+    return turnNumber % 2 === 0 ? "📣 経済イベント: 要人発言で相場の方向感が変化" : "📣 経済イベント: 流動性低下で値幅拡大に警戒";
+  }, [state?.maxTurns, state?.status, state?.turnNumber]);
+  const popupLine2 = useMemo(() => {
+    if (state?.status === "FINISHED") return "🎙️ 実況: 対戦終了。リザルトで勝敗要因をチェック！";
+    if (isUserTurn) return `🎙️ 実況: あなたの判断タイム。現在ロットは ${amount} です`;
+    return "🎙️ 実況: CPUが板を観測中...次のアクションに注目";
+  }, [amount, isUserTurn, state?.status]);
 
   return (
     <ScrollView contentContainerStyle={{ gap: 10, padding: 20 }} style={{ flex: 1 }}>
@@ -341,7 +355,10 @@ export default function BattleScreen() {
       {error ? <Text style={{ color: "red" }}>通信エラー: {error}</Text> : null}
       <Text style={{ color: "#1d4ed8" }}>{`${turnInfo} / ローソク足内バトル ${Number(state?.subturn ?? 1)}/3`}</Text>
       {notice ? <Text style={{ color: "#1d4ed8" }}>{notice}</Text> : null}
-      <Text>現在価格: {state?.currentPrice ?? "100"}</Text>
+      <View style={{ borderWidth: 2, borderColor: "#f59e0b", backgroundColor: "#fef3c7", borderRadius: 12, padding: 10, gap: 4 }}>
+        <Text style={{ fontWeight: "700", color: "#92400e" }}>{popupLine1}</Text>
+        <Text style={{ fontWeight: "700", color: "#92400e" }}>{popupLine2}</Text>
+      </View>
       <Text>ターン: {state?.turnNumber ?? 1}</Text>
       <Text>BUY合計損益: {pnlBySide.BUY.toFixed(2)} / SELL合計損益: {pnlBySide.SELL.toFixed(2)}</Text>
 
@@ -395,8 +412,8 @@ export default function BattleScreen() {
             />
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <Button title={`Buy ${amount}`} onPress={() => action("BUY")} />
-            <Button title={`Sell ${amount}`} onPress={() => action("SELL")} />
+            <Button title="Buy" onPress={() => action("BUY")} />
+            <Button title="Sell" onPress={() => action("SELL")} />
             <Button title="Hold" onPress={() => action("HOLD")} />
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
